@@ -14,6 +14,8 @@ To run use `cargo run` or for an optimised version, use `cargo run --release`.
 Open some programs that use MIDI inputs and connect a MIDI input.  
 The MIDI of the checked inputs will be sent to all the checked outputs.
 
+![Screenshot_20240103_233309](https://github.com/Davvos11/live-midi-splitter/assets/20478740/9ce02821-8afa-468c-b444-1aa0d901ff26)
+
 ## Features / to-do
 
 - [X] Connect MIDI inputs and outputs
