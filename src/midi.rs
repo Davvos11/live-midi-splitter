@@ -1,81 +1,113 @@
-use std::error::Error;
-use std::io::{stdin, stdout, Write};
+use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
-use midir::{MidiInput, MidiIO, MidiOutput, MidiOutputConnection};
+use std::thread;
+use std::time::Duration;
+use midir::{MidiInput, MidiInputConnection, MidiIO, MidiOutput, MidiOutputConnection};
+use crate::midi::preset::Preset;
 
+pub mod preset;
 
 pub struct Backend {
-    inputs: triple_buffer::Input<Vec<String>>,
-    outputs: triple_buffer::Input<Vec<String>>,
+    available_inputs: triple_buffer::Input<Vec<String>>,
+    available_outputs: triple_buffer::Input<Vec<String>>,
+    presets: Arc<Mutex<Vec<Preset>>>,
+    input_listeners: HashMap<String, MidiInputConnection<()>>,
+    output_handlers: Arc<Mutex<HashMap<String, MidiOutputConnection>>>
 }
 
 impl Backend {
-    pub fn new(inputs: triple_buffer::Input<Vec<String>>, outputs: triple_buffer::Input<Vec<String>>) -> Self {
-        Self { inputs, outputs }
+    pub fn new(inputs: triple_buffer::Input<Vec<String>>, outputs: triple_buffer::Input<Vec<String>>, presets: Arc<Mutex<Vec<Preset>>>) -> Self {
+        Self {
+            available_inputs: inputs,
+            available_outputs: outputs,
+            presets,
+            input_listeners: HashMap::new(),
+            output_handlers: Arc::new(Mutex::new(HashMap::new())),
+        }
     }
 
     pub fn run(&mut self) {
-        // TODO error to frontend
-        let midi_in = MidiInput::new("Live Midi Splitter in").unwrap();
-        let midi_out = MidiOutput::new("Live Midi Splitter out").unwrap();
+        // TODO error to frontend (new_input uses unwrap)
+        let midi_in = new_input();
+        let midi_out = new_output();
         loop {
-            self.inputs.write(get_ports(&midi_in));
-            self.outputs.write(get_ports(&midi_out));
+            // Send available ports to frontend
+            self.available_inputs.write(get_ports(&midi_in));
+            self.available_outputs.write(get_ports(&midi_out));
+
+            // Update presets
+            for preset in self.presets.lock().unwrap().iter() {
+                // Remove listeners for removed inputs
+                self.input_listeners.retain(|name, _| preset.inputs.contains(name));
+
+                // Get inputs that need to be added
+                let new_inputs = preset.inputs.iter()
+                    .filter(|&name| !self.input_listeners.contains_key(name));
+                let mut new_listeners = HashMap::new();
+
+                for name in new_inputs {
+                    // TODO optimise, don't get ports every time
+                    let ports = midi_in.ports();
+                    let mut port = ports.iter()
+                        .filter(|p| &midi_in.port_name(p).unwrap_or_default() == name);
+                    if let Some(port) = port.next() {
+                        let output_handlers = Arc::clone(&self.output_handlers);
+                        let midi_con = new_input().connect(port, "input", move |_, data, _| {
+                            for (_, output) in output_handlers.lock().unwrap().iter_mut() {
+                                // TODO error handling
+                                output.send(data).unwrap();
+                            }
+                        }, ()).unwrap();
+                        new_listeners.insert(name.clone(), midi_con);
+                    }
+                }
+
+                // Save listeners
+                for listener in new_listeners {
+                    self.input_listeners.insert(listener.0, listener.1);
+                }
+
+                // Remove handlers for removed outputs
+                self.output_handlers.lock().unwrap().retain(|name, _| preset.outputs.contains(name));
+
+                // Get outputs that need to be added
+                let new_outputs = preset.outputs.iter()
+                    .filter(|&name| !self.output_handlers.lock().unwrap().contains_key(name));
+                let mut new_handlers = HashMap::new();
+
+                for name in new_outputs {
+                    // TODO optimise, don't get ports every time
+                    let ports = midi_out.ports();
+                    let mut port = ports.iter()
+                        .filter(|p| &midi_out.port_name(p).unwrap_or_default() == name);
+                    if let Some(port) = port.next() {
+                        let midi_con = new_output().connect(port, "output").unwrap();
+                        new_handlers.insert(name.clone(), midi_con);
+                    }
+                }
+
+                // Save listeners
+                for handler in new_handlers {
+                    self.output_handlers.lock().unwrap().insert(handler.0, handler.1);
+                }
+            }
+
+            thread::sleep(Duration::from_millis(100));
         }
     }
 }
 
 fn get_ports<T: MidiIO>(midi_io: &T) -> Vec<String> {
     midi_io.ports().iter()
-        .map(|p|midi_io.port_name(p).unwrap_or("Cannot get port name".to_string()))
+        .map(|p| midi_io.port_name(p).unwrap_or("Cannot get port name".to_string()))
+        .filter(|p|!p.starts_with("Live Midi Splitter"))
         .collect()
 }
 
-pub fn old() {
-    let outs_1: Arc<Mutex<Vec<MidiOutputConnection>>> = Arc::new(Mutex::new(Vec::new()));
-    let outs_2 = Arc::clone(&outs_1);
-
-    let midi_in = MidiInput::new("Live Midi Splitter in").unwrap();
-    let in_port = select_port(&midi_in, "Input").unwrap();
-    let _in_con =
-        midi_in.connect(
-            &in_port,
-            "Input",
-            move |_, message, _| {
-                let outs = Arc::clone(&outs_1);
-                let mut outs = outs.lock().unwrap();
-                for out in outs.iter_mut() {
-                    out.send(message).unwrap();
-                }
-            },
-            ()
-        ).unwrap();
-
-
-    loop {
-        let midi_out = MidiOutput::new("Live Midi Splitter out").unwrap();
-        let out_port = select_port(&midi_out, "Output").unwrap();
-        let out_con = midi_out.connect(&out_port, "Output").unwrap();
-
-        let outs = Arc::clone(&outs_2);
-        let mut outs = outs.lock().unwrap();
-        outs.push(out_con);
-    }
+fn new_input() -> MidiInput {
+    MidiInput::new("Live Midi Splitter input").unwrap()
 }
 
-fn select_port<T: MidiIO>(midi_io: &T, descr: &str) -> Result<T::Port, Box<dyn Error>> {
-    println!("Available {} ports:", descr);
-    let midi_ports = midi_io.ports();
-    for (i, p) in midi_ports.iter().enumerate() {
-        println!("{}: {}", i, midi_io.port_name(p)?);
-    }
-    print!("Please select {} port: ", descr);
-    stdout().flush()?;
-    let mut input = String::new();
-    stdin().read_line(&mut input)?;
-    let port = midi_ports
-        .get(input.trim().parse::<usize>()?)
-        .ok_or("Invalid port number")?;
-    println!();
-    Ok(port.clone())
+fn new_output() -> MidiOutput {
+    MidiOutput::new("Live Midi Splitter output").unwrap()
 }
