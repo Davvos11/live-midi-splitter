@@ -5,9 +5,5 @@ edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
-[lib]
-# The `lib` artifact is needed for the standalone target
-crate-type = ["bin"]
-
 [dependencies]
 midir = { version = "0.9.1", features = ["jack"] }
