@@ -378,6 +378,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "crossbeam-utils"
+version = "0.8.18"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c3a430a770ebd84726f584a90ee7f020d28db52c6d02138900f22341f866d39c"
+dependencies = [
+ "cfg-if",
+]
+
+[[package]]
 name = "directories-next"
 version = "2.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -887,6 +896,7 @@ dependencies = [
  "egui",
  "midir",
  "serde",
+ "triple_buffer",
 ]
 
 [[package]]
@@ -1507,6 +1517,15 @@ dependencies = [
  "indexmap",
  "toml_datetime",
  "winnow",
+]
+
+[[package]]
+name = "triple_buffer"
+version = "7.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "316e1ab00252ce5980b8a70eb50f9818f47a20d341394c56ffab88e764b3caed"
+dependencies = [
+ "crossbeam-utils",
 ]
 
 [[package]]

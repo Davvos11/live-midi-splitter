@@ -3,7 +3,35 @@ use std::io::{stdin, stdout, Write};
 use std::sync::{Arc, Mutex};
 use midir::{MidiInput, MidiIO, MidiOutput, MidiOutputConnection};
 
-pub fn run() {
+
+pub struct Backend {
+    inputs: triple_buffer::Input<Vec<String>>,
+    outputs: triple_buffer::Input<Vec<String>>,
+}
+
+impl Backend {
+    pub fn new(inputs: triple_buffer::Input<Vec<String>>, outputs: triple_buffer::Input<Vec<String>>) -> Self {
+        Self { inputs, outputs }
+    }
+
+    pub fn run(&mut self) {
+        // TODO error to frontend
+        let midi_in = MidiInput::new("Live Midi Splitter in").unwrap();
+        let midi_out = MidiOutput::new("Live Midi Splitter out").unwrap();
+        loop {
+            self.inputs.write(get_ports(&midi_in));
+            self.outputs.write(get_ports(&midi_out));
+        }
+    }
+}
+
+fn get_ports<T: MidiIO>(midi_io: &T) -> Vec<String> {
+    midi_io.ports().iter()
+        .map(|p|midi_io.port_name(p).unwrap_or("Cannot get port name".to_string()))
+        .collect()
+}
+
+pub fn old() {
     let outs_1: Arc<Mutex<Vec<MidiOutputConnection>>> = Arc::new(Mutex::new(Vec::new()));
     let outs_2 = Arc::clone(&outs_1);
 
