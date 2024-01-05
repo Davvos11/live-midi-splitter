@@ -7,6 +7,7 @@ use crate::gui::tabs::input_settings::input_settings;
 use crate::gui::tabs::preset::preset_tab;
 use crate::gui::tabs::Tab;
 use crate::backend::{Backend, Properties};
+use crate::backend::preset::Preset;
 
 mod tabs;
 
@@ -41,7 +42,15 @@ impl eframe::App for Gui {
             ui.selectable_value(&mut self.current_tab, Tab::InputSettings, "Input settings");
             ui.separator();
             ui.label("Presets:");
-            ui.selectable_value(&mut self.current_tab, Tab::Preset(0), "Preset 0");
+            self.properties.lock().unwrap()
+                .presets.iter().enumerate()
+                .for_each(|(i, preset)| {
+                    ui.selectable_value(&mut self.current_tab, Tab::Preset(i), preset.name.clone());
+            });
+            if ui.button("Add preset").clicked() {
+                self.properties.lock().unwrap()
+                    .presets.push(Preset::default());
+            }
         });
 
         egui::CentralPanel::default().show(ctx, |ui| {
@@ -50,7 +59,7 @@ impl eframe::App for Gui {
                     input_settings(ui, Arc::clone(&self.properties));
                 }
                 Tab::Preset(id) => {
-                    preset_tab(ui, id)
+                    preset_tab(ui, Arc::clone(&self.properties), id)
                 }
             }
 

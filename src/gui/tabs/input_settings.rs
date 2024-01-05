@@ -10,10 +10,6 @@ pub fn input_settings(ui: &mut Ui, properties: Arc<Mutex<Properties>>) {
     let available_inputs = properties.available_inputs.clone();
     let mut inputs_to_remove = Vec::new();
 
-    if properties.inputs.is_empty() {
-        properties.inputs.push(String::new());
-    }
-
     properties.inputs.iter_mut().enumerate().for_each(|(i, input)| {
         ui.horizontal(|ui| {
             if ui.button("X").clicked() {

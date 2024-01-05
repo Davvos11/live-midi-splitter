@@ -8,13 +8,24 @@ use crate::backend::preset::Preset;
 pub mod preset;
 mod device;
 
-#[derive(Default)]
 pub struct Properties {
     pub available_inputs: Vec<String>,
     pub available_outputs: Vec<String>,
     pub presets: Vec<Preset>,
     pub inputs: Vec<String>,
 }
+
+impl Default for Properties {
+    fn default() -> Self {
+        Self {
+            available_inputs: Vec::new(),
+            available_outputs: Vec::new(),
+            presets: vec![Preset::default()],
+            inputs: vec![String::new()]
+        }
+    }
+}
+
 
 pub struct Backend {
     properties: Arc<Mutex<Properties>>,
