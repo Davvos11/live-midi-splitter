@@ -3,9 +3,11 @@ use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::Duration;
 use midir::{MidiInput, MidiInputConnection, MidiIO, MidiOutput, MidiOutputConnection};
+use crate::midi::device::{Input, new_input, new_output};
 use crate::midi::preset::Preset;
 
 pub mod preset;
+mod device;
 
 #[derive(Default)]
 pub struct Properties {
@@ -18,8 +20,7 @@ pub struct Properties {
 pub struct Backend {
     properties: Arc<Mutex<Properties>>,
 
-    input_listeners: HashMap<String, MidiInputConnection<()>>,
-    output_handlers: Arc<Mutex<HashMap<String, MidiOutputConnection>>>
+    input_listeners: Vec<Input>,
 }
 
 impl Backend {
@@ -27,8 +28,7 @@ impl Backend {
         Self {
             properties: Arc::new(Mutex::new(Properties::default())),
 
-            input_listeners: HashMap::new(),
-            output_handlers: Arc::new(Mutex::new(HashMap::new())),
+            input_listeners: Vec::new(),
         }
     }
 
@@ -42,62 +42,31 @@ impl Backend {
             properties.available_inputs = get_ports(&midi_in);
             properties.available_outputs = get_ports(&midi_out);
 
-            // Update presets
-            for preset in properties.presets.iter() {
-                // Remove listeners for removed inputs
-                self.input_listeners.retain(|name, _| preset.inputs.contains(name));
+            // New input factory:
+            let new_listener = |name: String| {
+                Input::new(
+                    name,
+                    |_, data| { dbg!(data); },
+                )
+            };
 
-                // Get inputs that need to be added
-                let new_inputs = preset.inputs.iter()
-                    .filter(|&name| !self.input_listeners.contains_key(name));
-                let mut new_listeners = HashMap::new();
-
-                for name in new_inputs {
-                    // TODO optimise, don't get ports every time
-                    let ports = midi_in.ports();
-                    let mut port = ports.iter()
-                        .filter(|p| &midi_in.port_name(p).unwrap_or_default() == name);
-                    if let Some(port) = port.next() {
-                        let output_handlers = Arc::clone(&self.output_handlers);
-                        let midi_con = new_input().connect(port, "input", move |_, data, _| {
-                            for (_, output) in output_handlers.lock().unwrap().iter_mut() {
-                                // TODO error handling
-                                output.send(data).unwrap();
-                            }
-                        }, ()).unwrap();
-                        new_listeners.insert(name.clone(), midi_con);
+            // Update input listeners (and count them)
+            let listener_count = properties.inputs.iter()
+                .filter(|s| !s.is_empty())
+                .enumerate()
+                .map(|(i, input_name)| {
+                    if let Some(input) = self.input_listeners.get_mut(i) {
+                        if input.port_name != *input_name {
+                            // Input setting has changed, change connection
+                            *input = new_listener(input_name.clone());
+                        }
+                    } else {
+                        // New input, add new connection
+                        self.input_listeners.push(new_listener(input_name.clone()));
                     }
-                }
-
-                // Save listeners
-                for listener in new_listeners {
-                    self.input_listeners.insert(listener.0, listener.1);
-                }
-
-                // Remove handlers for removed outputs
-                self.output_handlers.lock().unwrap().retain(|name, _| preset.outputs.contains(name));
-
-                // Get outputs that need to be added
-                let new_outputs = preset.outputs.iter()
-                    .filter(|&name| !self.output_handlers.lock().unwrap().contains_key(name));
-                let mut new_handlers = HashMap::new();
-
-                for name in new_outputs {
-                    // TODO optimise, don't get ports every time
-                    let ports = midi_out.ports();
-                    let mut port = ports.iter()
-                        .filter(|p| &midi_out.port_name(p).unwrap_or_default() == name);
-                    if let Some(port) = port.next() {
-                        let midi_con = new_output().connect(port, "output").unwrap();
-                        new_handlers.insert(name.clone(), midi_con);
-                    }
-                }
-
-                // Save listeners
-                for handler in new_handlers {
-                    self.output_handlers.lock().unwrap().insert(handler.0, handler.1);
-                }
-            }
+                }).count();
+            // Remove deleted input listeners
+            self.input_listeners.drain(listener_count..);
 
             drop(properties);
 
@@ -114,14 +83,7 @@ impl Backend {
 fn get_ports<T: MidiIO>(midi_io: &T) -> Vec<String> {
     midi_io.ports().iter()
         .map(|p| midi_io.port_name(p).unwrap_or("Cannot get port name".to_string()))
-        .filter(|p|!p.starts_with("Live Midi Splitter"))
+        .filter(|p| !p.starts_with("Live Midi Splitter"))
         .collect()
 }
 
-fn new_input() -> MidiInput {
-    MidiInput::new("Live Midi Splitter input").unwrap()
-}
-
-fn new_output() -> MidiOutput {
-    MidiOutput::new("Live Midi Splitter output").unwrap()
-}

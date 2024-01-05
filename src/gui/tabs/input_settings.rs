@@ -7,7 +7,7 @@ pub fn input_settings(ui: &mut Ui, properties: Arc<Mutex<Properties>>) {
     ui.heading("Input settings");
 
     let mut properties = properties.lock().unwrap();
-    let available_inputs = properties.available_outputs.clone();
+    let available_inputs = properties.available_inputs.clone();
     let mut inputs_to_remove = Vec::new();
 
     if properties.inputs.is_empty() {
