@@ -2,68 +2,74 @@ use std::sync::{Arc, Mutex};
 use std::thread;
 use eframe::Frame;
 use egui::Context;
+use egui::panel::{Side, TopBottomSide};
 use triple_buffer::triple_buffer;
+use crate::gui::tabs::input_settings::input_settings;
+use crate::gui::tabs::preset::preset_tab;
+use crate::gui::tabs::Tab;
 use crate::midi::Backend;
 use crate::midi::preset::Preset;
 
+mod tabs;
+
 pub struct Gui {
-    inputs: triple_buffer::Output<Vec<String>>,
-    outputs: triple_buffer::Output<Vec<String>>,
+    available_inputs: triple_buffer::Output<Vec<String>>,
+    available_outputs: triple_buffer::Output<Vec<String>>,
+    inputs: Arc<Mutex<Vec<String>>>,
     presets: Arc<Mutex<Vec<Preset>>>,
+
+    current_tab: Tab,
 }
 
 impl Default for Gui {
     fn default() -> Self {
-        let (inputs_backend, inputs_frontend) = triple_buffer(&Vec::new());
-        let (outputs_backend, outputs_frontend) = triple_buffer(&Vec::new());
+        let (av_inputs_backend, av_inputs_frontend) = triple_buffer(&Vec::new());
+        let (av_outputs_backend, av_outputs_frontend) = triple_buffer(&Vec::new());
         let presets_frontend = Arc::new(Mutex::new(vec![Preset::new("default".to_string())]));
         let presets_backend = Arc::clone(&presets_frontend);
+        let inputs_frontend = Arc::new(Mutex::new(Vec::new()));
+        let inputs_backend = Arc::clone(&presets_frontend);
 
-        let mut backend = Backend::new(inputs_backend, outputs_backend, presets_backend);
+        let mut backend = Backend::new(av_inputs_backend, av_outputs_backend, presets_backend);
 
         let _ = thread::spawn(move || backend.run());
 
         Self {
+            available_inputs: av_inputs_frontend,
+            available_outputs: av_outputs_frontend,
             inputs: inputs_frontend,
-            outputs: outputs_frontend,
             presets: presets_frontend,
+
+            current_tab: Tab::default(),
         }
     }
 }
 
 impl eframe::App for Gui {
     fn update(&mut self, ctx: &Context, _frame: &mut Frame) {
-        egui::CentralPanel::default().show(ctx, |ui| {
+        egui::TopBottomPanel::new(TopBottomSide::Top, "header").show(ctx, |ui| {
             ui.heading("Live Midi Splitter");
-
-            for preset in self.presets.lock().unwrap().iter_mut() {
-                self.inputs.read().iter().for_each(|in_port| {
-                    let mut enabled = preset.inputs.contains(in_port);
-                    let checkbox = ui.checkbox(&mut enabled, in_port);
-                    if checkbox.changed() {
-                        if enabled {
-                            preset.inputs.insert(in_port.clone());
-                        } else {
-                            preset.inputs.remove(in_port);
-                        }
-                    }
-                });
-
-                ui.separator();
-
-                self.outputs.read().iter().for_each(|in_port| {
-                    let mut enabled = preset.outputs.contains(in_port);
-                    let checkbox = ui.checkbox(&mut enabled, in_port);
-                    if checkbox.changed() {
-                        if enabled {
-                            preset.outputs.insert(in_port.clone());
-                        } else {
-                            preset.outputs.remove(in_port);
-                        }
-                    }
-                });
-            }
         });
 
+        egui::SidePanel::new(Side::Left, "sidebar").show(ctx, |ui| {
+            ui.selectable_value(&mut self.current_tab, Tab::InputSettings, "Input settings");
+            ui.separator();
+            ui.label("Presets:");
+            ui.selectable_value(&mut self.current_tab, Tab::Preset(0), "Preset 0");
+        });
+
+        egui::CentralPanel::default().show(ctx, |ui| {
+            match self.current_tab {
+                Tab::InputSettings => {
+                    input_settings(ui);
+                }
+                Tab::Preset(id) => {
+                    preset_tab(ui, id)
+                }
+            }
+
+
+
+        });
     }
 }
