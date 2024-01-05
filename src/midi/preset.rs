@@ -16,3 +16,9 @@ impl Preset {
         }
     }
 }
+
+impl Default for Preset {
+    fn default() -> Self {
+        Self::new("Default preset".to_string())
+    }
+}

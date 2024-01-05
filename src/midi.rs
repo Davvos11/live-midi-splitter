@@ -7,20 +7,26 @@ use crate::midi::preset::Preset;
 
 pub mod preset;
 
+#[derive(Default)]
+pub struct Properties {
+    pub available_inputs: Vec<String>,
+    pub available_outputs: Vec<String>,
+    pub presets: Vec<Preset>,
+    pub inputs: Vec<String>,
+}
+
 pub struct Backend {
-    available_inputs: triple_buffer::Input<Vec<String>>,
-    available_outputs: triple_buffer::Input<Vec<String>>,
-    presets: Arc<Mutex<Vec<Preset>>>,
+    properties: Arc<Mutex<Properties>>,
+
     input_listeners: HashMap<String, MidiInputConnection<()>>,
     output_handlers: Arc<Mutex<HashMap<String, MidiOutputConnection>>>
 }
 
 impl Backend {
-    pub fn new(inputs: triple_buffer::Input<Vec<String>>, outputs: triple_buffer::Input<Vec<String>>, presets: Arc<Mutex<Vec<Preset>>>) -> Self {
+    pub fn new() -> Self {
         Self {
-            available_inputs: inputs,
-            available_outputs: outputs,
-            presets,
+            properties: Arc::new(Mutex::new(Properties::default())),
+
             input_listeners: HashMap::new(),
             output_handlers: Arc::new(Mutex::new(HashMap::new())),
         }
@@ -31,12 +37,13 @@ impl Backend {
         let midi_in = new_input();
         let midi_out = new_output();
         loop {
+            let mut properties = self.properties.lock().unwrap();
             // Send available ports to frontend
-            self.available_inputs.write(get_ports(&midi_in));
-            self.available_outputs.write(get_ports(&midi_out));
+            properties.available_inputs = get_ports(&midi_in);
+            properties.available_outputs = get_ports(&midi_out);
 
             // Update presets
-            for preset in self.presets.lock().unwrap().iter() {
+            for preset in properties.presets.iter() {
                 // Remove listeners for removed inputs
                 self.input_listeners.retain(|name, _| preset.inputs.contains(name));
 
@@ -92,8 +99,15 @@ impl Backend {
                 }
             }
 
+            drop(properties);
+
             thread::sleep(Duration::from_millis(100));
         }
+    }
+
+
+    pub fn properties(&self) -> Arc<Mutex<Properties>> {
+        Arc::clone(&self.properties)
     }
 }
 
