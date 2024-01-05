@@ -1,6 +1,6 @@
 use std::sync::{Arc, Mutex};
 use egui::Ui;
-use crate::midi::Properties;
+use crate::backend::Properties;
 
 
 pub fn input_settings(ui: &mut Ui, properties: Arc<Mutex<Properties>>) {

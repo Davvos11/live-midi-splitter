@@ -3,8 +3,8 @@ use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::Duration;
 use midir::{MidiInput, MidiInputConnection, MidiIO, MidiOutput, MidiOutputConnection};
-use crate::midi::device::{Input, new_input, new_output};
-use crate::midi::preset::Preset;
+use crate::backend::device::{Input, new_input, new_output};
+use crate::backend::preset::Preset;
 
 pub mod preset;
 mod device;

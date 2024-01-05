@@ -1,7 +1,7 @@
 use crate::gui::Gui;
 
 mod gui;
-mod midi;
+mod backend;
 
 fn main() {
     let options = eframe::NativeOptions {

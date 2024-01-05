@@ -6,7 +6,7 @@ use egui::panel::{Side, TopBottomSide};
 use crate::gui::tabs::input_settings::input_settings;
 use crate::gui::tabs::preset::preset_tab;
 use crate::gui::tabs::Tab;
-use crate::midi::{Backend, Properties};
+use crate::backend::{Backend, Properties};
 
 mod tabs;
 
