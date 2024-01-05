@@ -1,8 +1,7 @@
-use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::Duration;
-use midir::{MidiInput, MidiInputConnection, MidiIO, MidiOutput, MidiOutputConnection};
+use midir::MidiIO;
 use crate::backend::device::{Input, new_input, new_output};
 use crate::backend::preset::Preset;
 
