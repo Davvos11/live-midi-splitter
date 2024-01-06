@@ -3,7 +3,7 @@ use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::Duration;
 use midir::MidiIO;
-use crate::backend::device::{ConnectError, Input, new_input, new_output, Output};
+use crate::backend::device::{Input, new_input, new_output, Output};
 use crate::backend::preset::Preset;
 
 pub mod preset;

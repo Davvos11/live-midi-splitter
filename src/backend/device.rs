@@ -1,4 +1,3 @@
-use std::fmt::Display;
 use midir::{MidiInput, MidiInputConnection, MidiOutput, MidiOutputConnection};
 
 pub struct Input {
