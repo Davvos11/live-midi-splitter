@@ -34,6 +34,8 @@ impl Default for Gui {
 
 impl eframe::App for Gui {
     fn update(&mut self, ctx: &Context, _frame: &mut Frame) {
+        let mut change_preset_to = None;
+
         egui::TopBottomPanel::new(TopBottomSide::Top, "header").show(ctx, |ui| {
             ui.heading("Live Midi Splitter");
         });
@@ -42,10 +44,15 @@ impl eframe::App for Gui {
             ui.selectable_value(&mut self.current_tab, Tab::InputSettings, "Input settings");
             ui.separator();
             ui.label("Presets:");
+
             self.properties.lock().unwrap()
                 .presets.iter().enumerate()
                 .for_each(|(i, preset)| {
-                    ui.selectable_value(&mut self.current_tab, Tab::Preset(i), preset.name.clone());
+                    if ui.selectable_value(&mut self.current_tab, Tab::Preset(i), preset.name.clone())
+                        .clicked() {
+                        // Besides changing the current tab, also change the preset
+                        change_preset_to = Some(i);
+                    }
             });
             if ui.button("Add preset").clicked() {
                 self.properties.lock().unwrap()
@@ -62,9 +69,10 @@ impl eframe::App for Gui {
                     preset_tab(ui, Arc::clone(&self.properties), id)
                 }
             }
-
-
-
         });
+
+        if let Some(new_preset) = change_preset_to {
+            self.properties.lock().unwrap().current_preset = new_preset;
+        }
     }
 }

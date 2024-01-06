@@ -1,4 +1,4 @@
-use midir::{MidiInput, MidiInputConnection, MidiOutput};
+use midir::{MidiInput, MidiInputConnection, MidiOutput, MidiOutputConnection};
 
 pub struct Input {
     pub port_name: String,
@@ -29,6 +29,29 @@ impl Input {
             move |ts, data, _| callback(ts, data),
             (),
         ).unwrap_or_else(|_| panic!("Could not connect to port {port_name}"))
+    }
+}
+
+pub struct Output {
+    pub connection: MidiOutputConnection,
+}
+
+impl Output {
+    pub fn new(port_name: &String) -> Self {
+        let output = new_output();
+        let connection = Self::connect(output, port_name);
+
+        Self { connection }
+    }
+
+    fn connect(output: MidiOutput, port_name: &String) -> MidiOutputConnection {
+        // Find port by name
+        let port = output.ports().iter()
+            .find(|p| output.port_name(p).unwrap_or_default() == *port_name)
+            .unwrap_or_else(|| panic!("Could not find port {port_name}")).clone();
+        // Create connection
+        output.connect(&port, "output")
+            .unwrap_or_else(|_| panic!("Could not connect to port {port_name}"))
     }
 }
 

@@ -1,8 +1,9 @@
+use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::Duration;
 use midir::MidiIO;
-use crate::backend::device::{Input, new_input, new_output};
+use crate::backend::device::{Input, new_input, new_output, Output};
 use crate::backend::preset::Preset;
 
 pub mod preset;
@@ -11,8 +12,9 @@ mod device;
 pub struct Properties {
     pub available_inputs: Vec<String>,
     pub available_outputs: Vec<String>,
-    pub presets: Vec<Preset>,
     pub inputs: Vec<String>,
+    pub presets: Vec<Preset>,
+    pub current_preset: usize,
 }
 
 impl Default for Properties {
@@ -20,8 +22,9 @@ impl Default for Properties {
         Self {
             available_inputs: Vec::new(),
             available_outputs: Vec::new(),
+            inputs: vec![String::new()],
             presets: vec![Preset::default()],
-            inputs: vec![String::new()]
+            current_preset: 0,
         }
     }
 }
@@ -31,6 +34,7 @@ pub struct Backend {
     properties: Arc<Mutex<Properties>>,
 
     input_listeners: Vec<Input>,
+    output_handlers: Arc<Mutex<HashMap<String, Output>>>
 }
 
 impl Backend {
@@ -39,6 +43,7 @@ impl Backend {
             properties: Arc::new(Mutex::new(Properties::default())),
 
             input_listeners: Vec::new(),
+            output_handlers: Arc::new(Mutex::new(HashMap::new())),
         }
     }
 
@@ -53,10 +58,26 @@ impl Backend {
             properties.available_outputs = get_ports(&midi_out);
 
             // New input factory:
-            let new_listener = |name: String| {
+            let new_listener = |name: String, input_id: usize| {
+                let properties = Arc::clone(&self.properties);
+                let output_handlers = Arc::clone(&self.output_handlers);
                 Input::new(
                     name,
-                    |_, data| { dbg!(data); },
+                    move |_, data| {
+                        let properties = properties.lock().unwrap();
+                        if let Some(preset) = properties.presets.get(properties.current_preset) {
+                            if let Some(mapping) = preset.mapping.get(&input_id) {
+                                mapping.iter().for_each(|output_name| {
+                                    let mut output_handlers = output_handlers.lock().unwrap();
+                                    // FIXME panics if output is removed
+                                    let output = output_handlers
+                                        .entry(output_name.clone())
+                                        .or_insert(Output::new(output_name));
+                                    output.connection.send(data).unwrap_or_else(|_| println!("Failed to send to {}", output_name));
+                                });
+                            }
+                        }
+                    },
                 )
             };
 
@@ -68,11 +89,11 @@ impl Backend {
                     if let Some(input) = self.input_listeners.get_mut(i) {
                         if input.port_name != *input_name {
                             // Input setting has changed, change connection
-                            *input = new_listener(input_name.clone());
+                            *input = new_listener(input_name.clone(), i);
                         }
                     } else {
                         // New input, add new connection
-                        self.input_listeners.push(new_listener(input_name.clone()));
+                        self.input_listeners.push(new_listener(input_name.clone(), i));
                     }
                 }).count();
             // Remove deleted input listeners
