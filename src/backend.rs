@@ -3,7 +3,7 @@ use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::Duration;
 use midir::MidiIO;
-use crate::backend::device::{Input, new_input, new_output, Output};
+use crate::backend::device::{ConnectError, Input, new_input, new_output, Output};
 use crate::backend::preset::Preset;
 
 pub mod preset;
@@ -34,7 +34,7 @@ pub struct Backend {
     properties: Arc<Mutex<Properties>>,
 
     input_listeners: Vec<Input>,
-    output_handlers: Arc<Mutex<HashMap<String, Output>>>
+    output_handlers: Arc<Mutex<HashMap<String, Output>>>,
 }
 
 impl Backend {
@@ -69,11 +69,19 @@ impl Backend {
                             if let Some(mapping) = preset.mapping.get(&input_id) {
                                 mapping.iter().for_each(|output_name| {
                                     let mut output_handlers = output_handlers.lock().unwrap();
-                                    // FIXME panics if output is removed
-                                    let output = output_handlers
-                                        .entry(output_name.clone())
-                                        .or_insert(Output::new(output_name));
-                                    output.connection.send(data).unwrap_or_else(|_| println!("Failed to send to {}", output_name));
+                                    if !output_handlers.contains_key(output_name) {
+                                        // Try to connect
+                                        let new_handler = Output::new(output_name);
+                                        match new_handler {
+                                            Ok(handler) => {
+                                                output_handlers.insert(output_name.clone(), handler);
+                                            }
+                                            Err(_) => { return; }
+                                        }
+                                    }
+                                    // We can unwrap because we checked or inserted the item above
+                                    output_handlers.get_mut(output_name).unwrap()
+                                        .connection.send(data).unwrap_or_else(|_| println!("Failed to send to {}", output_name));
                                 });
                             }
                         }

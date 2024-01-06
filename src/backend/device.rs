@@ -1,3 +1,4 @@
+use std::fmt::Display;
 use midir::{MidiInput, MidiInputConnection, MidiOutput, MidiOutputConnection};
 
 pub struct Input {
@@ -37,23 +38,30 @@ pub struct Output {
 }
 
 impl Output {
-    pub fn new(port_name: &String) -> Self {
+    pub fn new(port_name: &String) -> Result<Self, ConnectError> {
         let output = new_output();
-        let connection = Self::connect(output, port_name);
+        let connection = Self::connect(output, port_name)?;
 
-        Self { connection }
+        Ok(Self { connection })
     }
 
-    fn connect(output: MidiOutput, port_name: &String) -> MidiOutputConnection {
+    fn connect(output: MidiOutput, port_name: &String) -> Result<MidiOutputConnection, ConnectError> {
         // Find port by name
-        let port = output.ports().iter()
-            .find(|p| output.port_name(p).unwrap_or_default() == *port_name)
-            .unwrap_or_else(|| panic!("Could not find port {port_name}")).clone();
-        // Create connection
-        output.connect(&port, "output")
-            .unwrap_or_else(|_| panic!("Could not connect to port {port_name}"))
+        let ports = output.ports();
+        let port = ports.iter()
+            .find(|p| output.port_name(p).unwrap_or_default() == *port_name);
+        if let Some(port) = port {
+            // Create connection
+            output.connect(&port, "output")
+                .map_err(|_| ConnectError {})
+        } else {
+            Err(ConnectError {})
+        }
     }
 }
+
+#[derive(Debug)]
+pub struct ConnectError {}
 
 pub fn new_input() -> MidiInput {
     MidiInput::new("Live Midi Splitter input").unwrap()
