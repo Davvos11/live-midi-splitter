@@ -2,17 +2,21 @@ use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::Duration;
+use egui::Context;
 use midir::MidiIO;
 use crate::backend::device::{Input, new_input, new_output, Output};
+use crate::backend::midi_handler::create_new_listener;
 use crate::backend::properties::Properties;
 
 pub mod preset;
 pub mod properties;
 pub mod input_settings;
+pub mod midi_handler;
 mod device;
 
 pub struct Backend {
     properties: Arc<Mutex<Properties>>,
+    gui_ctx: Arc<Mutex<Option<Context>>>,
 
     input_listeners: Vec<Input>,
     output_handlers: Arc<Mutex<HashMap<String, Output>>>,
@@ -22,6 +26,7 @@ impl Backend {
     pub fn new() -> Self {
         Self {
             properties: Arc::new(Mutex::new(Properties::default())),
+            gui_ctx: Arc::new(Mutex::new(None)),
 
             input_listeners: Vec::new(),
             output_handlers: Arc::new(Mutex::new(HashMap::new())),
@@ -39,35 +44,8 @@ impl Backend {
             properties.available_outputs = get_ports(&midi_out);
 
             // New input factory:
-            let new_listener = |name: String, input_id: usize| {
-                let properties = Arc::clone(&self.properties);
-                let output_handlers = Arc::clone(&self.output_handlers);
-                Input::new(
-                    name,
-                    move |_, data| {
-                        let properties = properties.lock().unwrap();
-                        if let Some(preset) = properties.presets.get(properties.current_preset) {
-                            if let Some(mapping) = preset.mapping.get(&input_id) {
-                                mapping.iter().for_each(|output_name| {
-                                    let mut output_handlers = output_handlers.lock().unwrap();
-                                    if !output_handlers.contains_key(output_name) {
-                                        // Try to connect
-                                        let new_handler = Output::new(output_name);
-                                        match new_handler {
-                                            Ok(handler) => {
-                                                output_handlers.insert(output_name.clone(), handler);
-                                            }
-                                            Err(_) => { return; }
-                                        }
-                                    }
-                                    // We can unwrap because we checked or inserted the item above
-                                    output_handlers.get_mut(output_name).unwrap()
-                                        .connection.send(data).unwrap_or_else(|_| println!("Failed to send to {}", output_name));
-                                });
-                            }
-                        }
-                    },
-                )
+            let new_listener = |name, input_id| {
+                create_new_listener(name, input_id, Arc::clone(&self.properties), Arc::clone(&self.gui_ctx), Arc::clone(&self.output_handlers))
             };
 
             // Update input listeners (and count them)
@@ -97,6 +75,10 @@ impl Backend {
 
     pub fn properties(&self) -> Arc<Mutex<Properties>> {
         Arc::clone(&self.properties)
+    }
+
+    pub fn gui_ctx(&self) -> Arc<Mutex<Option<Context>>> {
+        Arc::clone(&self.gui_ctx)
     }
 }
 

@@ -51,7 +51,7 @@ impl Output {
             .find(|p| output.port_name(p).unwrap_or_default() == *port_name);
         if let Some(port) = port {
             // Create connection
-            output.connect(&port, "output")
+            output.connect(port, "output")
                 .map_err(|_| ConnectError {})
         } else {
             Err(ConnectError {})

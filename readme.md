@@ -11,7 +11,7 @@ but easier to use with Jack/Pipewire VSTs in mind.
 
 - [X] Connect MIDI inputs and outputs
 - [X] Multiple presets that switch where MIDI is sent to
-  - [ ] Switch between presets using MIDI program change
+  - [X] Switch between presets using MIDI program change
 - [ ] Filter MIDI ranges, i.e. keyboard split
 - [ ] Send note-off events to previous preset after switching to another
 - [ ] Save and load state of the program

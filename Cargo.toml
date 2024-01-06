@@ -14,3 +14,4 @@ eframe = { version = "0.24.1", default-features = false, features = [
     "glow",          # Use the glow rendering backend. Alternative: "wgpu".
     "persistence",   # Enable restoring app state when restarting the app.
 ] }
+midly = "0.5.3"

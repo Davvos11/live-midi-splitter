@@ -29,10 +29,7 @@ pub fn input_settings(ui: &mut Ui, properties: Arc<Mutex<Properties>>) {
                 });
             });
 
-        let mut x = false;
-        if ui.checkbox(&mut x, "Use Program Change to switch presets").changed() {
-
-        }
+        ui.checkbox(&mut input.use_program_change, "Use Program Change to switch presets");
 
         ui.separator();
     });

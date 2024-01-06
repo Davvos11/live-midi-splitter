@@ -1,5 +1,6 @@
 use std::sync::{Arc, Mutex};
 use std::thread;
+use std::time::Duration;
 use eframe::Frame;
 use egui::Context;
 use egui::panel::{Side, TopBottomSide};
@@ -14,6 +15,7 @@ mod tabs;
 
 pub struct Gui {
     properties: Arc<Mutex<Properties>>,
+    ctx_reference: Arc<Mutex<Option<Context>>>,
 
     current_tab: Tab,
 }
@@ -22,12 +24,13 @@ impl Default for Gui {
     fn default() -> Self {
         let mut backend = Backend::new();
         let properties = backend.properties();
+        let ctx_reference = backend.gui_ctx();
 
         let _ = thread::spawn(move || backend.run());
 
         Self {
             properties,
-
+            ctx_reference,
             current_tab: Tab::default(),
         }
     }
@@ -35,6 +38,11 @@ impl Default for Gui {
 
 impl eframe::App for Gui {
     fn update(&mut self, ctx: &Context, _frame: &mut Frame) {
+        let mut ctx_reference = self.ctx_reference.lock().unwrap();
+        if ctx_reference.is_none() {
+            *ctx_reference = Some(ctx.clone());
+        }
+
         let mut change_preset_to = None;
 
         egui::TopBottomPanel::new(TopBottomSide::Top, "header").show(ctx, |ui| {
@@ -69,6 +77,20 @@ impl eframe::App for Gui {
                     input_settings(ui, Arc::clone(&self.properties));
                 }
                 Tab::Preset(id) => {
+                    // Handle preset change by backend
+                    {
+                        let properties = self.properties.lock().unwrap();
+                        let current_preset = properties.current_preset;
+                        if current_preset != id {
+                            if current_preset < properties.presets.len() {
+                                self.current_tab = Tab::Preset(current_preset)
+                            } else {
+                                self.current_tab = Tab::InputSettings
+                            }
+                            ctx.request_repaint();
+                        }
+                    }
+
                     preset_tab(ui, Arc::clone(&self.properties), id)
                 }
             }
