@@ -1,6 +1,7 @@
 use std::collections::HashMap;
+use serde::{Deserialize, Serialize};
 
-#[derive(Clone)]
+#[derive(Serialize, Deserialize, Clone)]
 pub struct Preset {
     pub name: String,
     pub mapping: HashMap<usize, Vec<String>> // [list of outputs for each input]

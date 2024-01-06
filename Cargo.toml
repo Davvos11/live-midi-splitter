@@ -15,3 +15,5 @@ eframe = { version = "0.24.1", default-features = false, features = [
     "persistence",   # Enable restoring app state when restarting the app.
 ] }
 midly = "0.5.3"
+rfd = "0.12.1"
+serde_json = "1.0.111"

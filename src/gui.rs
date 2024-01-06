@@ -1,6 +1,5 @@
 use std::sync::{Arc, Mutex};
 use std::thread;
-use std::time::Duration;
 use eframe::Frame;
 use egui::Context;
 use egui::panel::{Side, TopBottomSide};
@@ -10,14 +9,17 @@ use crate::gui::tabs::Tab;
 use crate::backend::Backend;
 use crate::backend::preset::Preset;
 use crate::backend::properties::Properties;
+use crate::gui::widgets::save_load::save_load;
 
 mod tabs;
+mod widgets;
 
 pub struct Gui {
     properties: Arc<Mutex<Properties>>,
     ctx_reference: Arc<Mutex<Option<Context>>>,
 
     current_tab: Tab,
+    loading: Arc<Mutex<bool>>,
 }
 
 impl Default for Gui {
@@ -32,6 +34,7 @@ impl Default for Gui {
             properties,
             ctx_reference,
             current_tab: Tab::default(),
+            loading: Arc::new(Mutex::new(false)),
         }
     }
 }
@@ -46,7 +49,10 @@ impl eframe::App for Gui {
         let mut change_preset_to = None;
 
         egui::TopBottomPanel::new(TopBottomSide::Top, "header").show(ctx, |ui| {
-            ui.heading("Live Midi Splitter");
+            ui.horizontal(|ui| {
+                ui.heading("Live Midi Splitter");
+                save_load(ui, &self.properties, &self.loading);
+            });
         });
 
         egui::SidePanel::new(Side::Left, "sidebar")
@@ -72,6 +78,13 @@ impl eframe::App for Gui {
             });
 
         egui::CentralPanel::default().show(ctx, |ui| {
+            if *self.loading.lock().unwrap() {
+                ui.centered_and_justified(|ui| {
+                    ui.heading("Loading...");
+                });
+                return;
+            }
+
             match self.current_tab {
                 Tab::InputSettings => {
                     input_settings(ui, Arc::clone(&self.properties));

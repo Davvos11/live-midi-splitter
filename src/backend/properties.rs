@@ -1,8 +1,12 @@
+use serde::{Deserialize, Serialize};
 use crate::backend::input_settings::InputSettings;
 use crate::backend::preset::Preset;
 
+#[derive(Serialize, Deserialize)]
 pub struct Properties {
+    #[serde(skip_serializing, default)]
     pub available_inputs: Vec<String>,
+    #[serde(skip_serializing, default)]
     pub available_outputs: Vec<String>,
     pub inputs: Vec<InputSettings>,
     pub presets: Vec<Preset>,

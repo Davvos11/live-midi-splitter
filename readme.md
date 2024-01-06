@@ -14,7 +14,7 @@ but easier to use with Jack/Pipewire VSTs in mind.
   - [X] Switch between presets using MIDI program change
 - [ ] Filter MIDI ranges, i.e. keyboard split
 - [ ] Send note-off events to previous preset after switching to another
-- [ ] Save and load state of the program
+- [X] Save and load state of the program
 
 ## Usage
 
