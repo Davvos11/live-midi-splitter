@@ -40,25 +40,27 @@ impl eframe::App for Gui {
             ui.heading("Live Midi Splitter");
         });
 
-        egui::SidePanel::new(Side::Left, "sidebar").show(ctx, |ui| {
-            ui.selectable_value(&mut self.current_tab, Tab::InputSettings, "Input settings");
-            ui.separator();
-            ui.label("Presets:");
+        egui::SidePanel::new(Side::Left, "sidebar")
+            .default_width(100.0)
+            .show(ctx, |ui| {
+                ui.selectable_value(&mut self.current_tab, Tab::InputSettings, "Input settings");
+                ui.separator();
+                ui.label("Presets:");
 
-            self.properties.lock().unwrap()
-                .presets.iter().enumerate()
-                .for_each(|(i, preset)| {
-                    if ui.selectable_value(&mut self.current_tab, Tab::Preset(i), preset.name.clone())
-                        .clicked() {
-                        // Besides changing the current tab, also change the preset
-                        change_preset_to = Some(i);
-                    }
-            });
-            if ui.button("Add preset").clicked() {
                 self.properties.lock().unwrap()
-                    .presets.push(Preset::default());
-            }
-        });
+                    .presets.iter().enumerate()
+                    .for_each(|(i, preset)| {
+                        if ui.selectable_value(&mut self.current_tab, Tab::Preset(i), preset.name.clone())
+                            .clicked() {
+                            // Besides changing the current tab, also change the preset
+                            change_preset_to = Some(i);
+                        }
+                    });
+                if ui.button("Add preset").clicked() {
+                    self.properties.lock().unwrap()
+                        .presets.push(Preset::default());
+                }
+            });
 
         egui::CentralPanel::default().show(ctx, |ui| {
             match self.current_tab {
