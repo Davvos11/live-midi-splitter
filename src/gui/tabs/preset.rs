@@ -1,6 +1,6 @@
 use std::sync::{Arc, Mutex};
 use egui::Ui;
-use crate::backend::Properties;
+use crate::backend::properties::Properties;
 
 
 pub fn preset_tab(ui: &mut Ui, properties: Arc<Mutex<Properties>>, id: usize) {
@@ -13,7 +13,7 @@ pub fn preset_tab(ui: &mut Ui, properties: Arc<Mutex<Properties>>, id: usize) {
         ui.separator();
 
         inputs.iter().enumerate().for_each(|(input_id, input)| {
-            ui.label(input);
+            ui.label(&input.port_name);
             let mapping = preset.mapping.entry(input_id).or_default();
             let mut maps_to_remove = Vec::new();
 

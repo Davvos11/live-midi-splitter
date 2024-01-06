@@ -4,31 +4,12 @@ use std::thread;
 use std::time::Duration;
 use midir::MidiIO;
 use crate::backend::device::{Input, new_input, new_output, Output};
-use crate::backend::preset::Preset;
+use crate::backend::properties::Properties;
 
 pub mod preset;
+pub mod properties;
+pub mod input_settings;
 mod device;
-
-pub struct Properties {
-    pub available_inputs: Vec<String>,
-    pub available_outputs: Vec<String>,
-    pub inputs: Vec<String>,
-    pub presets: Vec<Preset>,
-    pub current_preset: usize,
-}
-
-impl Default for Properties {
-    fn default() -> Self {
-        Self {
-            available_inputs: Vec::new(),
-            available_outputs: Vec::new(),
-            inputs: vec![String::new()],
-            presets: vec![Preset::default()],
-            current_preset: 0,
-        }
-    }
-}
-
 
 pub struct Backend {
     properties: Arc<Mutex<Properties>>,
@@ -91,17 +72,17 @@ impl Backend {
 
             // Update input listeners (and count them)
             let listener_count = properties.inputs.iter()
-                .filter(|s| !s.is_empty())
+                .filter(|s| !s.port_name.is_empty())
                 .enumerate()
-                .map(|(i, input_name)| {
+                .map(|(i, new_input)| {
                     if let Some(input) = self.input_listeners.get_mut(i) {
-                        if input.port_name != *input_name {
+                        if input.port_name != *new_input.port_name {
                             // Input setting has changed, change connection
-                            *input = new_listener(input_name.clone(), i);
+                            *input = new_listener(new_input.port_name.clone(), i);
                         }
                     } else {
                         // New input, add new connection
-                        self.input_listeners.push(new_listener(input_name.clone(), i));
+                        self.input_listeners.push(new_listener(new_input.port_name.clone(), i));
                     }
                 }).count();
             // Remove deleted input listeners
