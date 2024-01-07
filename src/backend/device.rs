@@ -1,3 +1,4 @@
+use std::fmt::{Debug, Formatter};
 use midir::{MidiInput, MidiInputConnection, MidiOutput, MidiOutputConnection};
 
 pub struct Input {
@@ -56,6 +57,12 @@ impl Output {
         } else {
             Err(ConnectError {})
         }
+    }
+}
+
+impl Debug for Output {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "<output>")
     }
 }
 

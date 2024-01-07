@@ -1,5 +1,5 @@
 use std::sync::{Arc, Mutex};
-use egui::Ui;
+use egui::{Rgba, RichText, Ui};
 use crate::backend::properties::Properties;
 
 
@@ -22,8 +22,14 @@ pub fn preset_tab(ui: &mut Ui, properties: Arc<Mutex<Properties>>, id: usize) {
                     if ui.button("X").clicked() {
                         maps_to_remove.push(map_id);
                     }
+                    // Colour red if the selected output is not available (anymore)
+                    let text = if available_outputs.contains(output) {
+                        RichText::new(output.clone())
+                    } else {
+                        RichText::new(output.clone()).color(Rgba::from_rgb(1.0,0.0,0.0))
+                    };
                     egui::ComboBox::from_id_source(format!("mapping-{input_id}-{map_id}"))
-                        .selected_text(output.clone())
+                        .selected_text(text)
                         .width(0.5) // FIXME width not working
                         .wrap(true)
                         .show_ui(ui, |ui| {

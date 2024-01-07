@@ -50,8 +50,14 @@ pub fn create_new_listener(
             if let Some(mapping) = preset.and_then(|p| p.mapping.get(&input_id)) {
                 // Loop through mappings
                 mapping.iter().for_each(|output_name| {
-                    // Find output_handler or create new
                     let mut output_handlers = output_handlers.lock().unwrap();
+                    // Check if the output target has disconnected
+                    if !properties.available_outputs.contains(output_name) {
+                        output_handlers.remove(output_name);
+                        return;
+                    }
+
+                    // Find output_handler or create new
                     if !output_handlers.contains_key(output_name) {
                         // Try to connect
                         let new_handler = Output::new(output_name);
