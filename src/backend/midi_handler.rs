@@ -37,6 +37,8 @@ pub fn create_new_listener(
                         if let Some(ctx) = ctx.deref() {
                             ctx.request_repaint();
                         }
+                        // Don't send this data to the mappings
+                        return;
                     }
                 }
             } else {
