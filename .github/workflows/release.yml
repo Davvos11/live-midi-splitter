@@ -15,7 +15,7 @@ jobs:
     strategy:
       matrix:
         include:
-          - { name: ubuntu-20.04,       os: ubuntu-20.04,   cross-target: '' }
+          - { name: ubuntu-20.04,       os: ubuntu-20.04,   cross-target: 'x86_64-unknown-linux-gnu' }
 #          - { name: macos-universal,    os: macos-11,       cross-target: aarch64-apple-darwin }
 #          - { name: windows,            os: windows-latest, cross-target: 'x86_64-pc-windows-gnu' }
     name: Package plugin binaries
@@ -72,7 +72,7 @@ jobs:
         run: |
 #         GitHub Action strips the top level directory, great, have another one
           mkdir -p "$ARCHIVE_NAME/$ARCHIVE_NAME"
-          mv target/bundled/* "$ARCHIVE_NAME/$ARCHIVE_NAME"
+          mv target/release/${{ matrix.cross-target }}/live-midi-splitter "$ARCHIVE_NAME/$ARCHIVE_NAME"
 #      - name: Add an OS-specific readme file with installation instructions
 #        run: cp ".github/workflows/readme-${{ runner.os }}.txt" "$ARCHIVE_NAME/$ARCHIVE_NAME/README.txt"
       - uses: actions/upload-artifact@v3
