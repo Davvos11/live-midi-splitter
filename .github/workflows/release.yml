@@ -1,24 +1,85 @@
 on:
   release:
-    types: [created]
+    types: [ created ]
+
+name: Automated Builds
+
+defaults:
+  run:
+    # This otherwise gets run under dash which does not support brace expansion
+    shell: bash
 
 jobs:
-  release:
-    name: release ${{ matrix.target }}
-    runs-on: ubuntu-latest
+  # We'll only package the plugins with an entry in bundler.toml
+  package:
     strategy:
-      fail-fast: false
       matrix:
         include:
-          - target: x86_64-unknown-linux-musl
-            archive: tar.gz zip
+          - { name: ubuntu-20.04,       os: ubuntu-20.04,   cross-target: 'x86_64-unknown-linux-gnu' }
+    #          - { name: macos-universal,    os: macos-11,       cross-target: aarch64-apple-darwin }
+    #          - { name: windows,            os: windows-latest, cross-target: 'x86_64-pc-windows-gnu' }
+    name: Package plugin binaries
+    runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@master
-      - name: Compile and release
-        uses: rust-build/rust-build.action@v1.4.4
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - uses: actions/checkout@v3
+      - name: Fetch all git history
+        run: git fetch --force --prune --tags --unshallow
+
+      - name: Install dependencies
+        if: startsWith(matrix.os, 'ubuntu')
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libasound2-dev libgl-dev libjack-dev libx11-xcb-dev  libxcb1-dev libxcb-dri2-0-dev libxcb-icccm4-dev libxcursor-dev libxkbcommon-dev libxcb-shape0-dev libxcb-xfixes0-dev libgtk-3-dev
+
+      - uses: actions/cache@v3
+        # FIXME: Caching `target/` causes the Windows runner to blow up after some time
+        if: startsWith(matrix.os, 'windows')
         with:
-          RUSTTARGET: ${{ matrix.target }}
-          ARCHIVE_TYPES: ${{ matrix.archive }}
-#          EXTRA_FILES: ""
+          path: |
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+          key: ${{ matrix.name }}-${{ matrix.cross-target }}
+      - uses: actions/cache@v3
+        if: "!startsWith(matrix.os, 'windows')"
+        with:
+          path: |
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+          key: ${{ matrix.name }}-${{ matrix.cross-target }}
+
+      - name: Set up Rust toolchain
+        # Needed for SIMD
+        uses: dtolnay/rust-toolchain@nightly
+        with:
+          # The macOS AArch64 build is done from an x86_64 macOS CI runner, so
+          # it needs to be cross compiled
+          targets: ${{ matrix.cross-target }}
+      - name: Package all targets from bundler.toml
+        # Instead of hardcoding which targets to build and package, we'll
+        # package everything that's got en entry in the `bundler.toml` file
+        run: |
+          runner_name=${{ matrix.name }}
+          cross_target=${{ matrix.cross-target }}
+          cargo build --target $cross_target --release
+
+      - name: Determine build archive name
+        run: |
+          echo "ARCHIVE_NAME=live-midi-splitter-$(cargo pkgid | cut -d "#" -f2)-${{ matrix.name }}" >> "$GITHUB_ENV"
+      - name: Move all packaged plugin into a directory
+        run: |
+          mkdir -p "$ARCHIVE_NAME"
+          mv target/${{ matrix.cross-target }}/release/live-midi-splitter "$ARCHIVE_NAME/$ARCHIVE_NAME"
+          tar czf "$ARCHIVE_NAME".tar.gz --directory="$ARCHIVE_NAME" .
+      #      - name: Add an OS-specific readme file with installation instructions
+      #        run: cp ".github/workflows/readme-${{ runner.os }}.txt" "$ARCHIVE_NAME/$ARCHIVE_NAME/README.txt"
+      - name: Upload archives to release
+        uses: svenstaro/upload-release-action@v2
+        with:
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          file: ${{ env.ARCHIVE_NAME }}.tar.gz
+          asset_name: ${{ env.ARCHIVE_NAME }}.tar.gz
+          tag: ${{ github.ref }}
+          overwrite: true
