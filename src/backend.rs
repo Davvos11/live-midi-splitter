@@ -67,9 +67,12 @@ impl Backend {
                         }
                     }
                 });
-            // Remove disconnected (and empty) input listeners
+            // Remove disconnected and removed input listeners
             self.input_listeners.retain(|input| {
-                properties.available_inputs.contains(&input.port_name)
+                // Remove input listeners that do not exist anymore
+                properties.available_inputs.contains(&input.port_name) &&
+                // Remove input listeners that are not selected by the user anymore
+                    properties.inputs.iter().filter(|i|i.port_name == input.port_name).count() > 0
             });
 
             drop(properties);
