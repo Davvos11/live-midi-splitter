@@ -7,15 +7,13 @@ use midly::{live::LiveEvent, MidiMessage};
 use crate::backend::device::{ConnectError, Input, Output};
 use crate::backend::properties::Properties;
 
-mod event_buffer;
-
 pub fn create_new_listener(
     name: String,
     input_id: usize,
     properties: Arc<Mutex<Properties>>,
     gui_ctx: Arc<Mutex<Option<Context>>>,
     output_handlers: Arc<Mutex<HashMap<String, Output>>>,
-    event_buffer: Arc<Mutex<HashMap<LiveEvent<'static>, HashSet<String>>>>
+    event_buffer: Arc<Mutex<HashMap<LiveEvent<'static>, HashSet<String>>>>,
 ) -> Result<Input, ConnectError> {
     Input::new(
         name,
@@ -77,45 +75,77 @@ pub fn create_new_listener(
                     output_handlers.get_mut(output_name).unwrap()
                         .connection.send(data).unwrap_or_else(|_| println!("Failed to send to {}", output_name));
 
-                    // If this is a note-on or sustain-pedal event, save it
-                    // If this is a note-off or sustain-pedal release event, remove previously saved event
+                    // If this is a note-on or pedal event, save it
+                    // If this is a note-off or pedal release event, remove previously saved event
                     let mut event_buffer = event_buffer.lock().unwrap();
                     if let LiveEvent::Midi { channel, message } = event {
                         match message {
+                            MidiMessage::NoteOn { key, .. } => {
+                                // Save corresponding note off event to listen for
+                                let off_event = LiveEvent::Midi { channel, message: MidiMessage::NoteOff { key, vel: 0.into() } };
+                                event_buffer.entry(off_event).or_default().insert(output_name.clone());
+                            }
                             MidiMessage::NoteOff { key, .. } => {
-                                let off_event = LiveEvent::Midi {channel, message: MidiMessage::NoteOff {key, vel: 0.into()}};
+                                // Remove previously saved event (saved on note-on)
+                                let off_event = LiveEvent::Midi { channel, message: MidiMessage::NoteOff { key, vel: 0.into() } };
                                 if let Some(outputs) = event_buffer.get_mut(&off_event) {
                                     outputs.remove(output_name);
                                 }
                             }
-                            MidiMessage::NoteOn { key, .. } => {
-                                // Save corresponding note off event to listen for
-                                let off_event = LiveEvent::Midi {channel, message: MidiMessage::NoteOff {key, vel: 0.into()}};
-                                event_buffer.entry(off_event).or_default().insert(output_name.clone());
+                            MidiMessage::Controller { controller, value } => {
+                                match controller.as_int() {
+                                    64 | 66 | 69 => {
+                                        if value >= 64 {
+                                            // Save corresponding pedal off event to listen for
+                                            let off_event = LiveEvent::Midi {channel, message: MidiMessage::Controller {controller, value: 0.into()}};
+                                            event_buffer.entry(off_event).or_default().insert(output_name.clone());
+                                        } else {
+                                            // Remove previously saved event (saved on note-on)
+                                            let off_event = LiveEvent::Midi {channel, message: MidiMessage::Controller {controller, value: 0.into()}};
+                                            if let Some(outputs) = event_buffer.get_mut(&off_event) {
+                                                outputs.remove(output_name);
+                                            }
+                                        }
+                                    }
+                                    _ => {}
+                                }
                             }
-                            MidiMessage::Controller { .. } => {}
                             _ => {}
                         }
                     }
                 });
 
-                // Send note-off and sustain-pedal release events to outputs that are no longer active
+                // Send note-off and pedal release events to outputs that are no longer active
                 let mut event_buffer = event_buffer.lock().unwrap();
+                let mut off_event = None;
                 if let LiveEvent::Midi { channel, message } = event {
                     match message {
                         MidiMessage::NoteOff { key, .. } => {
-                            let off_event = LiveEvent::Midi {channel, message: MidiMessage::NoteOff {key, vel: 0.into()}};
-                            if let Some(outputs) = event_buffer.get(&off_event) {
-                                // Send to outputs that still need note-off events
-                                outputs.iter().for_each(|output_name| {
-                                    output_handlers.get_mut(output_name).unwrap()
-                                        .connection.send(data).unwrap_or_else(|_| println!("Failed to send to {}", output_name));
-                                });
-                                if outputs.is_empty() { event_buffer.remove(&off_event); }
+                            off_event = Some(LiveEvent::Midi { channel, message: MidiMessage::NoteOff { key, vel: 0.into() } });
+                        }
+                        MidiMessage::Controller { controller, value } => {
+                            match controller.as_int() {
+                                64 | 66 | 69 => {
+                                    if value < 64 {
+                                        off_event = Some(
+                                           LiveEvent::Midi {channel, message: MidiMessage::Controller {controller, value: 0.into()}}
+                                        );
+                                    }
+                                }
+                                _ => {}
                             }
                         }
-                        MidiMessage::Controller { .. } => {}
                         _ => {}
+                    }
+                };
+                if let Some(off_event) = off_event {
+                    if let Some(outputs) = event_buffer.get(&off_event) {
+                        // Send to outputs that still need note-off events
+                        outputs.iter().for_each(|output_name| {
+                            output_handlers.get_mut(output_name).unwrap()
+                                .connection.send(data).unwrap_or_else(|_| println!("Failed to send to {}", output_name));
+                        });
+                        if outputs.is_empty() { event_buffer.remove(&off_event); }
                     }
                 }
             } else {
