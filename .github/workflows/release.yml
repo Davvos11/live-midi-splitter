@@ -69,17 +69,17 @@ jobs:
         run: |
           echo "ARCHIVE_NAME=live-midi-splitter-$(cargo pkgid | cut -d "#" -f2)-${{ matrix.name }}" >> "$GITHUB_ENV"
       - name: Move all packaged plugin into a directory
-        # GitHub Action strips the top level directory, great, have another one
         run: |
-          mkdir -p "$ARCHIVE_NAME/$ARCHIVE_NAME"
+          mkdir -p "$ARCHIVE_NAME"
           mv target/${{ matrix.cross-target }}/release/live-midi-splitter "$ARCHIVE_NAME/$ARCHIVE_NAME"
+          tar czf "$ARCHIVE_NAME".tar.gz --directory="$ARCHIVE_NAME" .
       #      - name: Add an OS-specific readme file with installation instructions
       #        run: cp ".github/workflows/readme-${{ runner.os }}.txt" "$ARCHIVE_NAME/$ARCHIVE_NAME/README.txt"
       - name: Upload archives to release
         uses: svenstaro/upload-release-action@v2
         with:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
-          file: ${{ env.ARCHIVE_NAME }}
-          asset_name: ${{ env.ARCHIVE_NAME }}
+          file: ${{ env.ARCHIVE_NAME }}.tar.gz
+          asset_name: ${{ env.ARCHIVE_NAME }}.tar.gz
           tag: ${{ github.ref }}
           overwrite: true
