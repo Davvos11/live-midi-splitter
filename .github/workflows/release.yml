@@ -72,7 +72,7 @@ jobs:
         # GitHub Action strips the top level directory, great, have another one
         run: |
           mkdir -p "$ARCHIVE_NAME/$ARCHIVE_NAME"
-          mv target/release/${{ matrix.cross-target }}/release/live-midi-splitter "$ARCHIVE_NAME/$ARCHIVE_NAME"
+          mv target/${{ matrix.cross-target }}/release/live-midi-splitter "$ARCHIVE_NAME/$ARCHIVE_NAME"
       #      - name: Add an OS-specific readme file with installation instructions
       #        run: cp ".github/workflows/readme-${{ runner.os }}.txt" "$ARCHIVE_NAME/$ARCHIVE_NAME/README.txt"
       - uses: actions/upload-artifact@v3
