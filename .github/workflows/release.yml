@@ -67,7 +67,7 @@ jobs:
 
       - name: Determine build archive name
         run: |
-          echo "ARCHIVE_NAME=nih-plugs-$(cargo pkgid | cut -d "#" -f2)-${{ matrix.name }}" >> "$GITHUB_ENV"
+          echo "ARCHIVE_NAME=live-midi-splitter-$(cargo pkgid | cut -d "#" -f2)-${{ matrix.name }}" >> "$GITHUB_ENV"
       - name: Move all packaged plugin into a directory
         # GitHub Action strips the top level directory, great, have another one
         run: |
@@ -75,7 +75,11 @@ jobs:
           mv target/${{ matrix.cross-target }}/release/live-midi-splitter "$ARCHIVE_NAME/$ARCHIVE_NAME"
       #      - name: Add an OS-specific readme file with installation instructions
       #        run: cp ".github/workflows/readme-${{ runner.os }}.txt" "$ARCHIVE_NAME/$ARCHIVE_NAME/README.txt"
-      - uses: actions/upload-artifact@v3
+      - name: Upload archives to release
+        uses: svenstaro/upload-release-action@v2
         with:
-          name: ${{ env.ARCHIVE_NAME }}
-          path: ${{ env.ARCHIVE_NAME }}
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          file: env.ARCHIVE_NAME
+          asset_name: env.ARCHIVE_NAME
+          tag: ${{ github.ref }}
+          overwrite: true
