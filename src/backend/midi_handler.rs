@@ -1,10 +1,11 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::ops::Deref;
 use std::sync::{Arc, Mutex};
-use egui::ahash::HashSet;
 use egui::Context;
 use midly::{live::LiveEvent, MidiMessage};
+use midly::num::{u4, u7};
 use crate::backend::device::{ConnectError, Input, Output};
+use crate::backend::output_settings::OutputSettings;
 use crate::backend::properties::Properties;
 
 pub fn create_new_listener(
@@ -13,11 +14,12 @@ pub fn create_new_listener(
     properties: Arc<Mutex<Properties>>,
     gui_ctx: Arc<Mutex<Option<Context>>>,
     output_handlers: Arc<Mutex<HashMap<String, Output>>>,
-    event_buffer: Arc<Mutex<HashMap<LiveEvent<'static>, HashSet<String>>>>,
+    event_buffer: Arc<Mutex<HashMap<LiveEvent<'static>, HashSet<OutputSettings>>>>,
+    held_pedals: Arc<Mutex<HashMap<(u4, u7), u7>>>, // (channel, controller): value
 ) -> Result<Input, ConnectError> {
     Input::new(
         name,
-        move |_, data| {
+        move |_, data, previous_preset| {
             let mut properties = properties.lock().unwrap();
 
             // Parse midi data
@@ -51,29 +53,46 @@ pub fn create_new_listener(
             // Get preset
             let preset = properties.presets.get(properties.current_preset);
             if let Some(mapping) = preset.and_then(|p| p.mapping.get(&input_id)) {
+                // Check if we changed presets
+                let changed_preset = preset.unwrap().id != *previous_preset;
+                if changed_preset { *previous_preset = preset.unwrap().id }
+
                 // Loop through mappings
-                mapping.iter().for_each(|output_name| {
+                mapping.iter().for_each(|output| {
                     // Check if the output target has disconnected
-                    if !properties.available_outputs.contains(output_name) {
-                        output_handlers.remove(output_name);
+                    if !properties.available_outputs.contains(&output.port_name) {
+                        output_handlers.remove(&output.port_name);
                         return;
                     }
 
                     // Find output_handler or create new
-                    if !output_handlers.contains_key(output_name) {
+                    if !output_handlers.contains_key(&output.port_name) {
                         // Try to connect
-                        let new_handler = Output::new(output_name);
+                        let new_handler = Output::new(&output.port_name);
                         match new_handler {
                             Ok(handler) => {
-                                output_handlers.insert(output_name.clone(), handler);
+                                output_handlers.insert(output.port_name.clone(), handler);
                             }
                             Err(_) => { return; }
                         }
                     }
+
+                    // If we just changed presets, send any held pedal events
+                    if changed_preset && output.buffer_pedals {
+                        held_pedals.lock().unwrap().iter().for_each(|(&(channel, controller), &value)| {
+                            let pedal_event = LiveEvent::Midi { channel, message: MidiMessage::Controller { controller, value } };
+                            let mut data = Vec::new();
+                            if pedal_event.write(&mut data).is_ok() {
+                                output_handlers.get_mut(&output.port_name).unwrap()
+                                    .connection.send(&data).unwrap_or_else(|_| println!("Failed to send to {}", output.port_name));
+                            }
+                        });
+                    }
+
                     // Send data
                     // We can unwrap because we checked or inserted the item above
-                    output_handlers.get_mut(output_name).unwrap()
-                        .connection.send(data).unwrap_or_else(|_| println!("Failed to send to {}", output_name));
+                    output_handlers.get_mut(&output.port_name).unwrap()
+                        .connection.send(data).unwrap_or_else(|_| println!("Failed to send to {}", output.port_name));
 
                     // If this is a note-on or pedal event, save it
                     // If this is a note-off or pedal release event, remove previously saved event
@@ -83,27 +102,31 @@ pub fn create_new_listener(
                             MidiMessage::NoteOn { key, .. } => {
                                 // Save corresponding note off event to listen for
                                 let off_event = LiveEvent::Midi { channel, message: MidiMessage::NoteOff { key, vel: 0.into() } };
-                                event_buffer.entry(off_event).or_default().insert(output_name.clone());
+                                event_buffer.entry(off_event).or_default().insert(output.clone());
                             }
                             MidiMessage::NoteOff { key, .. } => {
                                 // Remove previously saved event (saved on note-on)
                                 let off_event = LiveEvent::Midi { channel, message: MidiMessage::NoteOff { key, vel: 0.into() } };
                                 if let Some(outputs) = event_buffer.get_mut(&off_event) {
-                                    outputs.remove(output_name);
+                                    outputs.remove(&output);
                                 }
                             }
                             MidiMessage::Controller { controller, value } => {
                                 match controller.as_int() {
                                     64 | 66 | 69 => {
-                                        if value >= 64 {
-                                            // Save corresponding pedal off event to listen for
-                                            let off_event = LiveEvent::Midi { channel, message: MidiMessage::Controller { controller, value: 0.into() } };
-                                            event_buffer.entry(off_event).or_default().insert(output_name.clone());
-                                        } else {
-                                            // Remove previously saved event (saved on note-on)
-                                            let off_event = LiveEvent::Midi { channel, message: MidiMessage::Controller { controller, value: 0.into() } };
-                                            if let Some(outputs) = event_buffer.get_mut(&off_event) {
-                                                outputs.remove(output_name);
+                                        if output.buffer_pedals {
+                                            if value >= 64 {
+                                                // Save corresponding pedal off event to listen for
+                                                let off_event = LiveEvent::Midi { channel, message: MidiMessage::Controller { controller, value: 0.into() } };
+                                                event_buffer.entry(off_event).or_default().insert(output.clone());
+                                                // Mark pedal as held (so it can be sent on preset switch)
+                                                held_pedals.lock().unwrap().insert((channel, controller), value);
+                                            } else {
+                                                // Remove previously saved event (saved on note-on)
+                                                let off_event = LiveEvent::Midi { channel, message: MidiMessage::Controller { controller, value: 0.into() } };
+                                                if let Some(outputs) = event_buffer.get_mut(&off_event) {
+                                                    outputs.remove(output);
+                                                }
                                             }
                                         }
                                     }
@@ -118,6 +141,7 @@ pub fn create_new_listener(
                 // Send note-off, after-touch and pedal release events to outputs that are no longer active
                 let mut event_buffer = event_buffer.lock().unwrap();
                 let mut off_event = None;
+                let mut is_pedal_event = false;
                 if let LiveEvent::Midi { channel, message } = event {
                     match message {
                         MidiMessage::NoteOff { key, .. } |
@@ -133,6 +157,9 @@ pub fn create_new_listener(
                                         off_event = Some(
                                             LiveEvent::Midi { channel, message: MidiMessage::Controller { controller, value: 0.into() } }
                                         );
+                                        is_pedal_event = true;
+                                        // Mark pedal as released
+                                        held_pedals.lock().unwrap().remove(&(channel, controller));
                                     }
                                 }
                                 _ => {}
@@ -144,9 +171,12 @@ pub fn create_new_listener(
                 if let Some(off_event) = off_event {
                     if let Some(outputs) = event_buffer.get(&off_event) {
                         // Send to outputs that still need note-off events
-                        outputs.iter().for_each(|output_name| {
-                            output_handlers.get_mut(output_name).unwrap()
-                                .connection.send(data).unwrap_or_else(|_| println!("Failed to send to {}", output_name));
+                        outputs.iter().for_each(|output| {
+                            if !output.buffer_pedals && is_pedal_event {
+                                return;
+                            }
+                            output_handlers.get_mut(&output.port_name).unwrap()
+                                .connection.send(data).unwrap_or_else(|_| println!("Failed to send to {}", output.port_name));
                         });
                         if outputs.is_empty() { event_buffer.remove(&off_event); }
                     }

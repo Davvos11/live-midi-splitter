@@ -1,12 +1,13 @@
 use std::collections::HashMap;
 use std::hash::{Hash, Hasher};
 use serde::{Deserialize, Serialize};
+use crate::backend::output_settings::OutputSettings;
 
 #[derive(Serialize, Deserialize, Clone)]
 pub struct Preset {
     pub id: usize,
     pub name: String,
-    pub mapping: HashMap<usize, Vec<String>> // [list of outputs for each input]
+    pub mapping: HashMap<usize, Vec<OutputSettings>>, // [list of outputs for each input]
 }
 
 impl Preset {
@@ -14,7 +15,7 @@ impl Preset {
         Self {
             id,
             name,
-            mapping: HashMap::new()
+            mapping: HashMap::new(),
         }
     }
 

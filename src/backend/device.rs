@@ -3,12 +3,12 @@ use midir::{MidiInput, MidiInputConnection, MidiOutput, MidiOutputConnection};
 
 pub struct Input {
     pub port_name: String,
-    pub connection: MidiInputConnection<()>,
+    pub connection: MidiInputConnection<usize>,
 }
 
 impl Input {
     pub fn new<F>(port_name: String, callback: F) -> Result<Self, ConnectError>
-        where F: FnMut(u64, &[u8]) + Send + 'static
+        where F: FnMut(u64, &[u8], &mut usize) + Send + 'static
     {
         let input = new_input();
         let connection = Self::connect(input, &port_name, callback)?;
@@ -16,8 +16,8 @@ impl Input {
         Ok(Self { port_name, connection })
     }
 
-    fn connect<F>(input: MidiInput, port_name: &String, mut callback: F) -> Result<MidiInputConnection<()>, ConnectError>
-        where F: FnMut(u64, &[u8]) + Send + 'static
+    fn connect<F>(input: MidiInput, port_name: &String, callback: F) -> Result<MidiInputConnection<usize>, ConnectError>
+        where F: FnMut(u64, &[u8], &mut usize) + Send + 'static
     {
         // Find port by name
         if let Some(port) = input.ports().iter()
@@ -26,8 +26,8 @@ impl Input {
             input.connect(
                 port,
                 "input",
-                move |ts, data, _| callback(ts, data),
-                (),
+                callback,
+                0,
             ).or(Err(ConnectError {}))
         } else {
             Err(ConnectError {})

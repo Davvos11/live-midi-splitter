@@ -1,5 +1,6 @@
 use std::sync::{Arc, Mutex};
-use egui::{Rgba, RichText, Ui};
+use egui::{CollapsingHeader, Rgba, RichText, TextStyle, Ui};
+use crate::backend::output_settings::OutputSettings;
 use crate::backend::properties::Properties;
 
 
@@ -30,10 +31,10 @@ pub fn preset_tab(ui: &mut Ui, properties: Arc<Mutex<Properties>>, id: usize) {
                         maps_to_remove.push(map_id);
                     }
                     // Colour red if the selected output is not available (anymore)
-                    let text = if available_outputs.contains(output) {
-                        RichText::new(output.clone())
+                    let text = if available_outputs.contains(&output.port_name) {
+                        RichText::new(&output.port_name)
                     } else {
-                        RichText::new(output.clone()).color(Rgba::from_rgb(1.0,0.0,0.0))
+                        RichText::new(&output.port_name).color(Rgba::from_rgb(1.0, 0.0, 0.0))
                     };
                     egui::ComboBox::from_id_source(format!("mapping-{input_id}-{map_id}"))
                         .selected_text(text)
@@ -42,18 +43,26 @@ pub fn preset_tab(ui: &mut Ui, properties: Arc<Mutex<Properties>>, id: usize) {
                         .show_ui(ui, |ui| {
                             ui.style_mut().wrap = Some(true);
                             available_outputs.iter().for_each(|output_option| {
-                                ui.selectable_value(output, output_option.clone(), output_option);
+                                ui.selectable_value(&mut output.port_name, output_option.clone(), output_option);
                             });
                         });
                 });
+                CollapsingHeader::new(RichText::new("Advanced").text_style(TextStyle::Small))
+                    .id_source(format!("advanced-{input_id}-{map_id}"))
+                    .show(ui, |ui| {
+                        // TODO add info button or hover, explaining the setting.
+                        ui.checkbox(
+                            &mut output.buffer_pedals,
+                            RichText::new("Send pedal events after switching presets").text_style(TextStyle::Small)
+                        );
+                    });
             });
 
             if ui.button("Add output").clicked() {
-                mapping.push(String::new());
+                mapping.push(OutputSettings::default());
             }
             maps_to_remove.iter().for_each(|&i| { mapping.remove(i); });
         });
-
     } else {
         ui.heading("Failed to load preset");
     }
@@ -61,7 +70,7 @@ pub fn preset_tab(ui: &mut Ui, properties: Arc<Mutex<Properties>>, id: usize) {
     if remove_preset {
         properties.presets.remove(id);
         // Update "internal" ids to match position in list
-        properties.presets.iter_mut().enumerate().for_each(|(i, p)|p.id = i);
-        properties.current_preset = if id > 0 { id - 1 } else {0};
+        properties.presets.iter_mut().enumerate().for_each(|(i, p)| p.id = i);
+        properties.current_preset = if id > 0 { id - 1 } else { 0 };
     }
 }

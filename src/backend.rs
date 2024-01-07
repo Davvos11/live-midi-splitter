@@ -1,13 +1,14 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::Duration;
-use egui::ahash::HashSet;
 use egui::Context;
 use midir::MidiIO;
 use midly::live::LiveEvent;
+use midly::num::{u4, u7};
 use crate::backend::device::{Input, new_input, new_output, Output};
 use crate::backend::midi_handler::create_new_listener;
+use crate::backend::output_settings::OutputSettings;
 use crate::backend::properties::Properties;
 
 pub mod preset;
@@ -15,6 +16,7 @@ pub mod properties;
 pub mod input_settings;
 pub mod midi_handler;
 mod device;
+pub mod output_settings;
 
 pub struct Backend {
     properties: Arc<Mutex<Properties>>,
@@ -22,7 +24,8 @@ pub struct Backend {
 
     input_listeners: Vec<Input>,
     output_handlers: Arc<Mutex<HashMap<String, Output>>>,
-    event_buffer: Arc<Mutex<HashMap<LiveEvent<'static>, HashSet<String>>>>
+    event_buffer: Arc<Mutex<HashMap<LiveEvent<'static>, HashSet<OutputSettings>>>>,
+    held_pedals: Arc<Mutex<HashMap<(u4, u7), u7>>>, // (channel, controller): value
 }
 
 impl Backend {
@@ -33,7 +36,8 @@ impl Backend {
 
             input_listeners: Vec::new(),
             output_handlers: Arc::new(Mutex::new(HashMap::new())),
-            event_buffer: Arc::new(Mutex::new(HashMap::new()))
+            event_buffer: Arc::new(Mutex::new(HashMap::new())),
+            held_pedals: Arc::new(Mutex::new(HashMap::new())),
         }
     }
 
@@ -56,6 +60,7 @@ impl Backend {
                     Arc::clone(&self.gui_ctx),
                     Arc::clone(&self.output_handlers),
                     Arc::clone(&self.event_buffer),
+                    Arc::clone(&self.held_pedals),
                 )
             };
 
