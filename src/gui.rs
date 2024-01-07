@@ -1,3 +1,4 @@
+use std::ops::Deref;
 use std::sync::{Arc, Mutex};
 use std::thread;
 use eframe::Frame;
@@ -9,10 +10,13 @@ use crate::gui::tabs::Tab;
 use crate::backend::Backend;
 use crate::backend::preset::Preset;
 use crate::backend::properties::Properties;
+use crate::gui::data::RecentFiles;
+use crate::gui::tabs::recent_files::recent_files;
 use crate::gui::widgets::save_load::save_load;
 
 mod tabs;
 mod widgets;
+pub mod data;
 
 pub struct Gui {
     properties: Arc<Mutex<Properties>>,
@@ -20,21 +24,34 @@ pub struct Gui {
 
     current_tab: Tab,
     loading: Arc<Mutex<bool>>,
+
+    recent_files: Arc<Mutex<RecentFiles>>
 }
 
 impl Default for Gui {
     fn default() -> Self {
+        // Start backend
         let mut backend = Backend::new();
         let properties = backend.properties();
         let ctx_reference = backend.gui_ctx();
 
         let _ = thread::spawn(move || backend.run());
 
+        // Load recent files
+        let recent_files = Arc::new(Mutex::new(RecentFiles::default()));
+        let recent_files_thread = Arc::clone(&recent_files);
+        let _ = thread::spawn(move || {
+            if let Some(data) = RecentFiles::load() {
+                *recent_files_thread.lock().unwrap() = data;
+            }
+        });
+
         Self {
             properties,
             ctx_reference,
             current_tab: Tab::default(),
             loading: Arc::new(Mutex::new(false)),
+            recent_files,
         }
     }
 }
@@ -51,13 +68,14 @@ impl eframe::App for Gui {
         egui::TopBottomPanel::new(TopBottomSide::Top, "header").show(ctx, |ui| {
             ui.horizontal(|ui| {
                 ui.heading("Live Midi Splitter");
-                save_load(ui, &self.properties, &self.loading);
+                save_load(ui, &self.properties, &self.loading, &self.recent_files);
             });
         });
 
         egui::SidePanel::new(Side::Left, "sidebar")
             .default_width(100.0)
             .show(ctx, |ui| {
+                ui.selectable_value(&mut self.current_tab, Tab::RecentFiles, "Recent files");
                 ui.selectable_value(&mut self.current_tab, Tab::InputSettings, "Input settings");
                 ui.separator();
                 ui.label("Presets:");
@@ -86,6 +104,10 @@ impl eframe::App for Gui {
             }
 
             match self.current_tab {
+                Tab::RecentFiles => {
+                    let files = self.recent_files.lock().unwrap();
+                    recent_files(ui, &self.properties, &self.loading, files.deref());
+                }
                 Tab::InputSettings => {
                     input_settings(ui, Arc::clone(&self.properties));
                 }

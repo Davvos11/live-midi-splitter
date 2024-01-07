@@ -2,6 +2,7 @@ use crate::gui::Gui;
 
 mod gui;
 mod backend;
+mod utils;
 
 fn main() {
     let options = eframe::NativeOptions {
