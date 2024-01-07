@@ -2,8 +2,10 @@ use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::Duration;
+use egui::ahash::HashSet;
 use egui::Context;
 use midir::MidiIO;
+use midly::live::LiveEvent;
 use crate::backend::device::{Input, new_input, new_output, Output};
 use crate::backend::midi_handler::create_new_listener;
 use crate::backend::properties::Properties;
@@ -20,6 +22,7 @@ pub struct Backend {
 
     input_listeners: Vec<Input>,
     output_handlers: Arc<Mutex<HashMap<String, Output>>>,
+    event_buffer: Arc<Mutex<HashMap<LiveEvent<'static>, HashSet<String>>>>
 }
 
 impl Backend {
@@ -30,6 +33,7 @@ impl Backend {
 
             input_listeners: Vec::new(),
             output_handlers: Arc::new(Mutex::new(HashMap::new())),
+            event_buffer: Arc::new(Mutex::new(HashMap::new()))
         }
     }
 
@@ -45,7 +49,14 @@ impl Backend {
 
             // New input factory:
             let new_listener = |name, input_id| {
-                create_new_listener(name, input_id, Arc::clone(&self.properties), Arc::clone(&self.gui_ctx), Arc::clone(&self.output_handlers))
+                create_new_listener(
+                    name,
+                    input_id,
+                    Arc::clone(&self.properties),
+                    Arc::clone(&self.gui_ctx),
+                    Arc::clone(&self.output_handlers),
+                    Arc::clone(&self.event_buffer),
+                )
             };
 
             // Update input listeners
