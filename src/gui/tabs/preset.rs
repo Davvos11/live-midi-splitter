@@ -8,8 +8,15 @@ pub fn preset_tab(ui: &mut Ui, properties: Arc<Mutex<Properties>>, id: usize) {
     let inputs = properties.inputs.clone();
     let available_outputs = properties.available_outputs.clone();
 
+    let mut remove_preset = false;
+
     if let Some(preset) = properties.presets.get_mut(id) {
-        egui::TextEdit::singleline(&mut preset.name).show(ui);
+        ui.horizontal(|ui| {
+            egui::TextEdit::singleline(&mut preset.name)
+                .desired_width(ui.available_width() - 60.0)
+                .show(ui);
+            remove_preset = ui.button("Remove").clicked();
+        });
         ui.separator();
 
         inputs.iter().enumerate().for_each(|(input_id, input)| {
@@ -49,5 +56,12 @@ pub fn preset_tab(ui: &mut Ui, properties: Arc<Mutex<Properties>>, id: usize) {
 
     } else {
         ui.heading("Failed to load preset");
+    }
+
+    if remove_preset {
+        properties.presets.remove(id);
+        // Update "internal" ids to match position in list
+        properties.presets.iter_mut().enumerate().for_each(|(i, p)|p.id = i);
+        properties.current_preset = if id > 0 { id - 1 } else {0};
     }
 }

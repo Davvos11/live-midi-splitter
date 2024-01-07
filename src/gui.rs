@@ -84,7 +84,7 @@ impl eframe::App for Gui {
                 let mut properties = self.properties.lock().unwrap();
                 let current_preset = properties.current_preset;
                 let presets = &mut properties.presets;
-                let drag_response = dnd(ui, "presets").show(presets.iter(), |ui, preset, handle, state| {
+                let drag_response = dnd(ui, "presets").show(presets.iter(), |ui, preset, handle, _| {
                     handle.ui(ui, |ui| {
                         if ui.selectable_value(&mut self.current_tab, Tab::Preset(preset.id), preset.name.clone())
                                     .changed() {
