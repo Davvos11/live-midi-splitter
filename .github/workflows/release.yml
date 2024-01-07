@@ -67,7 +67,7 @@ jobs:
 
       - name: Determine build archive name
         run: |
-          echo "ARCHIVE_NAME=nih-plugs-$(cargo pkgid | cut -d "#" -f2)-${{ matrix.name }}" >> "$GITHUB_ENV"
+          echo "ARCHIVE_NAME=live-midi-splitter >> "$GITHUB_ENV"
       - name: Move all packaged plugin into a directory
         run: |
 #         GitHub Action strips the top level directory, great, have another one

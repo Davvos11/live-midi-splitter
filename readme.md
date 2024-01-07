@@ -16,10 +16,12 @@ but easier to use with Jack/Pipewire VSTs in mind.
 
 ## Usage
 
-To run use `cargo run` or for an optimised version, use `cargo run --release`.
-
-Open some programs that use MIDI inputs and connect a MIDI input.  
-The MIDI of the checked inputs will be sent to all the checked outputs.
+1. Download the latest version from [Github](https://github.com/Davvos11/live-midi-splitter/releases).
+2. Extract the downloaded archive.
+3. Run `live-midi-splitter`.
+4. - Open some software or connect some hardware that outputs and inputs midi.
+   - Select the input(s) that you want to use.
+   - Create preset(s) with the output(s) you want to send to.
 
 ## Example:
 
