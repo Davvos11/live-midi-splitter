@@ -97,11 +97,11 @@ pub fn create_new_listener(
                                     64 | 66 | 69 => {
                                         if value >= 64 {
                                             // Save corresponding pedal off event to listen for
-                                            let off_event = LiveEvent::Midi {channel, message: MidiMessage::Controller {controller, value: 0.into()}};
+                                            let off_event = LiveEvent::Midi { channel, message: MidiMessage::Controller { controller, value: 0.into() } };
                                             event_buffer.entry(off_event).or_default().insert(output_name.clone());
                                         } else {
                                             // Remove previously saved event (saved on note-on)
-                                            let off_event = LiveEvent::Midi {channel, message: MidiMessage::Controller {controller, value: 0.into()}};
+                                            let off_event = LiveEvent::Midi { channel, message: MidiMessage::Controller { controller, value: 0.into() } };
                                             if let Some(outputs) = event_buffer.get_mut(&off_event) {
                                                 outputs.remove(output_name);
                                             }
@@ -115,20 +115,23 @@ pub fn create_new_listener(
                     }
                 });
 
-                // Send note-off and pedal release events to outputs that are no longer active
+                // Send note-off, after-touch and pedal release events to outputs that are no longer active
                 let mut event_buffer = event_buffer.lock().unwrap();
                 let mut off_event = None;
                 if let LiveEvent::Midi { channel, message } = event {
                     match message {
-                        MidiMessage::NoteOff { key, .. } => {
+                        MidiMessage::NoteOff { key, .. } |
+                        MidiMessage::Aftertouch { key, .. } => {
                             off_event = Some(LiveEvent::Midi { channel, message: MidiMessage::NoteOff { key, vel: 0.into() } });
+                            // NOTE: after-touch events for held notes should also get sent to previous outputs
+                            // I have not tested this, since I do not own a keyboard with after-touch
                         }
                         MidiMessage::Controller { controller, value } => {
                             match controller.as_int() {
                                 64 | 66 | 69 => {
                                     if value < 64 {
                                         off_event = Some(
-                                           LiveEvent::Midi {channel, message: MidiMessage::Controller {controller, value: 0.into()}}
+                                            LiveEvent::Midi { channel, message: MidiMessage::Controller { controller, value: 0.into() } }
                                         );
                                     }
                                 }
