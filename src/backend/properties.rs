@@ -19,7 +19,7 @@ impl Default for Properties {
             available_inputs: Vec::new(),
             available_outputs: Vec::new(),
             inputs: vec![InputSettings::default()],
-            presets: vec![Preset::default()],
+            presets: vec![Preset::new_from_id(0)],
             current_preset: 0,
         }
     }

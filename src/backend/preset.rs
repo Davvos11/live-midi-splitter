@@ -1,23 +1,30 @@
 use std::collections::HashMap;
+use std::hash::{Hash, Hasher};
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Clone)]
 pub struct Preset {
+    pub id: usize,
     pub name: String,
     pub mapping: HashMap<usize, Vec<String>> // [list of outputs for each input]
 }
 
 impl Preset {
-    pub fn new(name: String) -> Self {
+    pub fn new(id: usize, name: String) -> Self {
         Self {
+            id,
             name,
             mapping: HashMap::new()
         }
     }
+
+    pub fn new_from_id(id: usize) -> Self {
+        Self::new(id, format!("Preset {}", id + 1))
+    }
 }
 
-impl Default for Preset {
-    fn default() -> Self {
-        Self::new("Default preset".to_string())
+impl Hash for Preset {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        Hash::hash(&self.id, state)
     }
 }
