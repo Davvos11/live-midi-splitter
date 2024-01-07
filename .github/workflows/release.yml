@@ -64,6 +64,7 @@ jobs:
           runner_name=${{ matrix.name }}
           cross_target=${{ matrix.cross-target }}
           cargo build --target $cross_target --release
+
       - name: Determine build archive name
         run: |
           echo "ARCHIVE_NAME=nih-plugs-$(cargo pkgid | cut -d "#" -f2)-${{ matrix.name }}" >> "$GITHUB_ENV"
