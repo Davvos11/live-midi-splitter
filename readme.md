@@ -2,8 +2,6 @@
 
 Control multiple MIDI instruments with one input.
 
-Currently only a proof of concept.
-
 The goal is something similar to https://sourceforge.net/projects/midi-layer/,
 but easier to use with Jack/Pipewire VSTs in mind.
 
@@ -25,6 +23,6 @@ The MIDI of the checked inputs will be sent to all the checked outputs.
 
 ## Example:
 
-![Screenshot_20240106_015132](https://github.com/Davvos11/live-midi-splitter/assets/20478740/2a72af14-d8e6-4d30-99bf-a06229dd1155)
+![Screenshot_20240107_015515](https://github.com/Davvos11/live-midi-splitter/assets/20478740/ef4f3367-d0cd-4d34-aa2f-c143ecbc6e36)
 
-https://github.com/Davvos11/live-midi-splitter/assets/20478740/38dbfb77-559a-4478-bea5-f300a9db7b78
+https://github.com/Davvos11/live-midi-splitter/assets/20478740/42569ce8-50d6-4443-bdc7-896ab15b2215
