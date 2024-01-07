@@ -1,5 +1,6 @@
 use std::sync::{Arc, Mutex};
-use egui::Ui;
+use eframe::epaint::Rgba;
+use egui::{RichText, Ui};
 use crate::backend::input_settings::InputSettings;
 use crate::backend::properties::Properties;
 
@@ -18,8 +19,14 @@ pub fn input_settings(ui: &mut Ui, properties: Arc<Mutex<Properties>>) {
             }
             ui.label(format!("Input {}:", i + 1));
         });
+        // Colour red if the selected input is not available (anymore)
+        let text = if available_inputs.contains(&input.port_name) {
+            RichText::new(&input.port_name)
+        } else {
+            RichText::new(&input.port_name).color(Rgba::from_rgb(1.0,0.0,0.0))
+        };
         egui::ComboBox::from_id_source(format!("input-{i}"))
-            .selected_text(&input.port_name)
+            .selected_text(text)
             .width(200.0)
             .wrap(true)
             .show_ui(ui, |ui| {

@@ -48,23 +48,29 @@ impl Backend {
                 create_new_listener(name, input_id, Arc::clone(&self.properties), Arc::clone(&self.gui_ctx), Arc::clone(&self.output_handlers))
             };
 
-            // Update input listeners (and count them)
-            let listener_count = properties.inputs.iter()
+            // Update input listeners
+            properties.inputs.iter()
                 .filter(|s| !s.port_name.is_empty())
                 .enumerate()
-                .map(|(i, new_input)| {
+                .for_each(|(i, new_input)| {
                     if let Some(input) = self.input_listeners.get_mut(i) {
                         if input.port_name != *new_input.port_name {
                             // Input setting has changed, change connection
-                            *input = new_listener(new_input.port_name.clone(), i);
+                            if let Ok(new_input) = new_listener(new_input.port_name.clone(), i) {
+                                *input = new_input;
+                            }
                         }
                     } else {
                         // New input, add new connection
-                        self.input_listeners.push(new_listener(new_input.port_name.clone(), i));
+                        if let Ok(new_input) = new_listener(new_input.port_name.clone(), i) {
+                            self.input_listeners.push(new_input);
+                        }
                     }
-                }).count();
-            // Remove deleted input listeners
-            self.input_listeners.drain(listener_count..);
+                });
+            // Remove disconnected (and empty) input listeners
+            self.input_listeners.retain(|input| {
+                properties.available_inputs.contains(&input.port_name)
+            });
 
             drop(properties);
 

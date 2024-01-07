@@ -3,7 +3,7 @@ use std::ops::Deref;
 use std::sync::{Arc, Mutex};
 use egui::Context;
 use midly::{live::LiveEvent, MidiMessage};
-use crate::backend::device::{Input, Output};
+use crate::backend::device::{ConnectError, Input, Output};
 use crate::backend::properties::Properties;
 
 pub fn create_new_listener(
@@ -12,7 +12,7 @@ pub fn create_new_listener(
     properties: Arc<Mutex<Properties>>,
     gui_ctx: Arc<Mutex<Option<Context>>>,
     output_handlers: Arc<Mutex<HashMap<String, Output>>>,
-) -> Input {
+) -> Result<Input, ConnectError> {
     Input::new(
         name,
         move |_, data| {
