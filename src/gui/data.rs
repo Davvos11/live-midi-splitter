@@ -9,6 +9,7 @@ const NAME: Option<&str> = option_env!("CARGO_PKG_NAME");
 
 #[derive(Serialize, Deserialize, Default)]
 pub struct RecentFiles {
+    // TODO actually sort by last used, be able to remove (and remove on error)
     pub files: HashSet<PathBuf>
 }
 
