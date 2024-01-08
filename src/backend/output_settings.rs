@@ -6,7 +6,7 @@ fn get_true() -> bool {
     true
 }
 
-#[derive(Serialize, Deserialize, Clone, Eq)]
+#[derive(Serialize, Deserialize, Clone, Eq, Debug)]
 pub struct OutputSettings {
     pub port_name: String,
     #[serde(default = "get_true")]

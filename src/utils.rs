@@ -1,10 +1,14 @@
+use std::fs;
 use std::fs::File;
 use std::io::BufReader;
 use std::ops::Deref;
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
+use pro_serde_versioned::{VersionedDeserialize, VersionedSerialize, VersionedUpgrade};
 use rfd::FileDialog;
-use crate::backend::properties::Properties;
+use serde::Deserialize;
+use serde_json::Error;
+use crate::backend::properties::{Properties, PropertiesV0_3_0, PropertiesVersioned};
 
 pub fn save_dialog(properties: Arc<Mutex<Properties>>) -> Option<PathBuf> {
     // TODO error handling
@@ -17,7 +21,9 @@ pub fn save_dialog(properties: Arc<Mutex<Properties>>) -> Option<PathBuf> {
         }
         let file = File::create(&location).unwrap();
         let properties = properties.lock().unwrap();
-        serde_json::to_writer_pretty(file, properties.deref()).unwrap();
+        let versioned: PropertiesVersioned = properties.to_owned().into();
+        let x: serde_json::Value = versioned.versioned_serialize().unwrap();
+        serde_json::to_writer_pretty(file, &x).unwrap();
         return Some(location);
     }
     None
@@ -30,10 +36,7 @@ pub fn load_dialog(properties: Arc<Mutex<Properties>>) -> Option<PathBuf> {
         .add_filter("Live MIDI splitter config", &["lmsc"])
         .pick_file()
     {
-        let file = File::open(&location).unwrap();
-        let reader = BufReader::new(file);
-        *properties.lock().unwrap() = serde_json::from_reader(reader).unwrap();
-        return Some(location)
+        if load(&location, properties) { return Some(location) }
     }
     None
 }
@@ -41,8 +44,21 @@ pub fn load_dialog(properties: Arc<Mutex<Properties>>) -> Option<PathBuf> {
 pub fn load(location: &PathBuf, properties: Arc<Mutex<Properties>>) -> bool {
     let file = File::open(location).unwrap();
     let reader = BufReader::new(file);
-    if let Some(data) = serde_json::from_reader(reader).unwrap() {
-        *properties.lock().unwrap() = data;
+    if let Ok(data) = serde_json::from_reader(reader) {
+        *properties.lock().unwrap() = match PropertiesVersioned::versioned_deserialize::<serde_json::Value>(&data) {
+            Ok(versioned_data) => {
+                versioned_data.upgrade_to_latest()
+            }
+            Err(_) => {
+                // Try parsing un-versioned file (i.e. before v0.4.0)
+                if let Ok(properties_old) = PropertiesV0_3_0::deserialize(data) {
+                    PropertiesVersioned::V1(properties_old).upgrade_to_latest()
+                } else {
+                    return false;
+                }
+            }
+        };
+
         // TODO move to different tab and refresh view
         return true
     }

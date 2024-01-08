@@ -3,7 +3,7 @@ use std::hash::{Hash, Hasher};
 use serde::{Deserialize, Serialize};
 use crate::backend::output_settings::OutputSettings;
 
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct Preset {
     pub id: usize,
     pub name: String,
