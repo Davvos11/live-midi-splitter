@@ -12,7 +12,6 @@ pub struct Properties {
     pub inputs: Vec<InputSettings>,
     pub presets: Vec<Preset>,
     pub current_preset: usize,
-    pub test_value: usize,
 }
 
 impl Default for Properties {
@@ -23,7 +22,6 @@ impl Default for Properties {
             inputs: vec![InputSettings::default()],
             presets: vec![Preset::new_from_id(0)],
             current_preset: 0,
-            test_value: 12,
         }
     }
 }
@@ -48,7 +46,6 @@ pub struct PropertiesV0_3_0 {
 impl Upgrade<Properties> for PropertiesV0_3_0 {
     fn upgrade(self) -> Properties {
         Properties {
-            test_value: self.presets.len(),
             inputs: self.inputs,
             presets: self.presets,
             current_preset: self.current_preset,

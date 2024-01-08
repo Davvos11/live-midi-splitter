@@ -20,7 +20,7 @@ pub fn save_load(ui: &mut Ui,
                 *loading.lock().unwrap() = true;
                 if let Some(file) = load_dialog(properties) {
                     let mut recent_files = recent_files.lock().unwrap();
-                    recent_files.files.insert(file);
+                    recent_files.add(file);
                     recent_files.save();
                 }
                 *loading.lock().unwrap() = false;
@@ -35,7 +35,7 @@ pub fn save_load(ui: &mut Ui,
                 *loading.lock().unwrap() = true;
                 if let Some(file) = save_dialog(properties) {
                     let mut recent_files = recent_files.lock().unwrap();
-                    recent_files.files.insert(file);
+                    recent_files.add(file);
                     recent_files.save();
                 }
                 *loading.lock().unwrap() = false;

@@ -129,8 +129,7 @@ impl eframe::App for Gui {
 
             match self.current_tab {
                 Tab::RecentFiles => {
-                    let files = self.recent_files.lock().unwrap();
-                    recent_files(ui, &self.properties, &self.loading, files.deref());
+                    recent_files(ui, &self.properties, &self.loading, Arc::clone(&self.recent_files));
                 }
                 Tab::InputSettings => {
                     input_settings(ui, Arc::clone(&self.properties));
