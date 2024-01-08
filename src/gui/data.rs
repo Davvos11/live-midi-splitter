@@ -15,11 +15,13 @@ impl RecentFiles {
     pub fn add(&mut self, item: PathBuf) {
         self.remove(&item);
         self.files.push(item);
+        self.save();
     }
 
     pub fn remove(&mut self, item: &PathBuf) {
         if let Some(i) = self.files.iter().position(|p| p == item) {
             self.files.remove(i);
+            self.save()
         }
     }
 
@@ -37,7 +39,7 @@ impl RecentFiles {
         None
     }
 
-    pub fn save(&self) {
+    fn save(&self) {
         if let Some(mut location) = dirs::config_dir() {
             location.push(NAME.unwrap_or("live-midi-splitter"));
             // Create path if not exist
