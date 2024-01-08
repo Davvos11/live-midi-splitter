@@ -1,13 +1,10 @@
-use std::fs;
 use std::fs::File;
 use std::io::BufReader;
-use std::ops::Deref;
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 use pro_serde_versioned::{VersionedDeserialize, VersionedSerialize, VersionedUpgrade};
 use rfd::FileDialog;
 use serde::Deserialize;
-use serde_json::Error;
 use crate::backend::properties::{Properties, PropertiesV0_3_0, PropertiesVersioned};
 
 pub fn save_dialog(properties: Arc<Mutex<Properties>>) -> Option<PathBuf> {
@@ -19,12 +16,15 @@ pub fn save_dialog(properties: Arc<Mutex<Properties>>) -> Option<PathBuf> {
         if location.extension().is_none() {
             location.set_extension("lmsc");
         }
-        let file = File::create(&location).unwrap();
+        let Ok(file) = File::create(&location) else {
+            return None;
+        };
         let properties = properties.lock().unwrap();
         let versioned: PropertiesVersioned = properties.to_owned().into();
-        let x: serde_json::Value = versioned.versioned_serialize().unwrap();
-        serde_json::to_writer_pretty(file, &x).unwrap();
-        return Some(location);
+        let serialised: serde_json::Value = versioned.versioned_serialize().unwrap();
+        if serde_json::to_writer_pretty(file, &serialised).is_ok() {
+            return Some(location);
+        }
     }
     None
 }
@@ -42,7 +42,9 @@ pub fn load_dialog(properties: Arc<Mutex<Properties>>) -> Option<PathBuf> {
 }
 
 pub fn load(location: &PathBuf, properties: Arc<Mutex<Properties>>) -> bool {
-    let file = File::open(location).unwrap();
+    let Ok(file) = File::open(location) else {
+      return false;
+    };
     let reader = BufReader::new(file);
     if let Ok(data) = serde_json::from_reader(reader) {
         *properties.lock().unwrap() = match PropertiesVersioned::versioned_deserialize::<serde_json::Value>(&data) {
