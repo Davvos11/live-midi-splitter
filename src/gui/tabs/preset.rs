@@ -61,6 +61,9 @@ pub fn preset_tab(ui: &mut Ui, properties: Arc<Mutex<Properties>>, id: usize) {
             if ui.button("Add output").clicked() {
                 mapping.push(OutputSettings::default());
             }
+
+            ui.separator();
+
             maps_to_remove.iter().for_each(|&i| { mapping.remove(i); });
         });
     } else {

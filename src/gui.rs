@@ -1,7 +1,7 @@
 use std::sync::{Arc, Mutex};
 use std::thread;
 use eframe::Frame;
-use egui::Context;
+use egui::{Context};
 use egui::panel::{Side, TopBottomSide};
 use egui_dnd::dnd;
 use crate::gui::tabs::input_settings::input_settings;
@@ -13,6 +13,7 @@ use crate::backend::properties::Properties;
 use crate::gui::data::RecentFiles;
 use crate::gui::tabs::recent_files::recent_files;
 use crate::gui::widgets::save_load::save_load;
+use crate::gui::widgets::transpose::transpose;
 
 mod tabs;
 mod widgets;
@@ -66,10 +67,13 @@ impl eframe::App for Gui {
         let mut change_preset_to = None;
 
         egui::TopBottomPanel::new(TopBottomSide::Top, "header").show(ctx, |ui| {
-            ui.horizontal(|ui| {
-                ui.heading("Live Midi Splitter");
-                save_load(ui, &self.properties, &self.loading, &self.recent_files);
-            });
+            egui::Grid::new("header-grid")
+                .show(ui, |ui| {
+                    ui.heading("Live MIDI splitter");
+                    save_load(ui, &self.properties, &self.loading, &self.recent_files);
+                    transpose(ui, Arc::clone(&self.properties));
+                    ui.end_row();
+                });
         });
 
         egui::SidePanel::new(Side::Left, "sidebar")

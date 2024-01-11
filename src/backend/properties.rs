@@ -12,6 +12,8 @@ pub struct Properties {
     pub inputs: Vec<InputSettings>,
     pub presets: Vec<Preset>,
     pub current_preset: usize,
+    #[serde(default)]
+    pub transpose: i8,
 }
 
 impl Default for Properties {
@@ -22,6 +24,7 @@ impl Default for Properties {
             inputs: vec![InputSettings::default()],
             presets: vec![Preset::new_from_id(0)],
             current_preset: 0,
+            transpose: 0,
         }
     }
 }

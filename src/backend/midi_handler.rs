@@ -49,6 +49,21 @@ pub fn create_new_listener(
                 eprintln!("Could not get input settings for input {input_id}")
             }
 
+            // Make mutable copy of data
+            let mut data = data.to_vec();
+            // Apply transpose
+            if properties.transpose != 0 {
+                if let LiveEvent::Midi { message, .. } = event {
+                    match message {
+                        MidiMessage::NoteOff { .. } | MidiMessage::NoteOn { .. } | MidiMessage::Aftertouch { .. } => {
+                            // Change raw data directly. data[1] is the key value. set to 0 at underflow
+                            data[1] = data[1].checked_add_signed(properties.transpose).unwrap_or(0);
+                        }
+                        _ => {}
+                    }
+                }
+            }
+
             let mut output_handlers = output_handlers.lock().unwrap();
             // Get preset
             let preset = properties.presets.get(properties.current_preset);
@@ -92,7 +107,7 @@ pub fn create_new_listener(
                     // Send data
                     // We can unwrap because we checked or inserted the item above
                     output_handlers.get_mut(&output.port_name).unwrap()
-                        .connection.send(data).unwrap_or_else(|_| println!("Failed to send to {}", output.port_name));
+                        .connection.send(&data).unwrap_or_else(|_| println!("Failed to send to {}", output.port_name));
 
                     // If this is a note-on or pedal event, save it
                     // If this is a note-off or pedal release event, remove previously saved event
@@ -176,7 +191,7 @@ pub fn create_new_listener(
                                 return;
                             }
                             output_handlers.get_mut(&output.port_name).unwrap()
-                                .connection.send(data).unwrap_or_else(|_| println!("Failed to send to {}", output.port_name));
+                                .connection.send(&data).unwrap_or_else(|_| println!("Failed to send to {}", output.port_name));
                         });
                         if outputs.is_empty() { event_buffer.remove(&off_event); }
                     }
