@@ -1,3 +1,4 @@
+use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 use std::thread;
 use eframe::Frame;
@@ -14,6 +15,7 @@ use crate::gui::data::RecentFiles;
 use crate::gui::tabs::recent_files::recent_files;
 use crate::gui::widgets::save_load::save_load;
 use crate::gui::widgets::transpose::transpose;
+use crate::utils::load;
 
 mod tabs;
 mod widgets;
@@ -40,12 +42,11 @@ impl Default for Gui {
 
         // Load recent files
         let recent_files = Arc::new(Mutex::new(RecentFiles::default()));
-        let recent_files_thread = Arc::clone(&recent_files);
-        let _ = thread::spawn(move || {
-            if let Some(data) = RecentFiles::load() {
-                *recent_files_thread.lock().unwrap() = data;
-            }
-        });
+        // TODO maybe on a thread, but it needs to be ready for Gui::with_preset()
+        if let Some(data) = RecentFiles::load() {
+            *recent_files.lock().unwrap() = data;
+        }
+
 
         Self {
             properties,
@@ -54,6 +55,17 @@ impl Default for Gui {
             loading: Arc::new(Mutex::new(false)),
             recent_files,
         }
+    }
+}
+
+impl Gui {
+    pub fn with_preset(path: &String) -> Self {
+        let gui = Gui::default();
+        let path = PathBuf::from(path);
+        load(&path, Arc::clone(&gui.properties));
+        gui.recent_files.lock().unwrap().add(path);
+
+        gui
     }
 }
 

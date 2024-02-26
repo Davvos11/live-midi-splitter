@@ -22,6 +22,7 @@ If you let go of the notes or pedal, the previous instruments will still get the
 1. Download the latest version from [Github](https://github.com/Davvos11/live-midi-splitter/releases).
 2. Extract the downloaded archive.
 3. Run `live-midi-splitter-version`.
+   - Optionally, you can provide the path to a preset file, for example `live-midi-splitter-version "./some preset.lmsc"` 
 4. - Open some software or connect some hardware that outputs and inputs midi.
    - Select the input(s) that you want to use.
    - Create preset(s) with the output(s) you want to send to.
