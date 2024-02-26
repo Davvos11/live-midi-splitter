@@ -1,5 +1,6 @@
 use std::fs::File;
 use std::io::BufReader;
+use std::num::ParseIntError;
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 use pro_serde_versioned::{VersionedDeserialize, VersionedSerialize, VersionedUpgrade};
@@ -36,14 +37,14 @@ pub fn load_dialog(properties: Arc<Mutex<Properties>>) -> Option<PathBuf> {
         .add_filter("Live MIDI splitter config", &["lmsc"])
         .pick_file()
     {
-        if load(&location, properties) { return Some(location) }
+        if load(&location, properties) { return Some(location); }
     }
     None
 }
 
 pub fn load(location: &PathBuf, properties: Arc<Mutex<Properties>>) -> bool {
     let Ok(file) = File::open(location) else {
-      return false;
+        return false;
     };
     let reader = BufReader::new(file);
     if let Ok(data) = serde_json::from_reader(reader) {
@@ -62,7 +63,33 @@ pub fn load(location: &PathBuf, properties: Arc<Mutex<Properties>>) -> bool {
         };
 
         // TODO move to different tab and refresh view
-        return true
+        return true;
     }
     false
+}
+
+const NOTE_NAMES: &[&str; 12] = &["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
+const NOTE_NAMES_FLAT: &[&str; 12] = &["C", "DB", "D", "EB", "E", "F", "GB", "G", "AB", "A", "BB", "B"];
+
+pub fn midi_to_note(note: u8) -> String {
+    let octave = (note / 12) as i8 - 1;
+    let note_index = (note % 12) as usize;
+    format!("{}{}", NOTE_NAMES[note_index], octave)
+}
+
+pub fn note_to_midi(string: &str) -> Option<f64> {
+    if string.len() < 2 {
+        return None;
+    }
+    let (note, octave) = string.split_at(string.len() - 1);
+    let note = note.to_uppercase();
+    let note_index =
+        NOTE_NAMES.iter().position(|&s| s == note)
+            .or(NOTE_NAMES_FLAT.iter().position(|&s| s == note))?;
+    let octave = match octave.parse::<i8>() {
+        Ok(octave) => {if octave < -1  { return None } else { octave }}
+        Err(_) => {return None}
+    };
+
+    Some(((octave + 1) * 12 + note_index as i8) as f64)
 }

@@ -6,11 +6,17 @@ fn get_true() -> bool {
     true
 }
 
+fn default_filter() -> (u8, u8) { (0, 128) }
+
 #[derive(Serialize, Deserialize, Clone, Eq, Debug)]
 pub struct OutputSettings {
     pub port_name: String,
     #[serde(default = "get_true")]
     pub buffer_pedals: bool,
+    #[serde(default)]
+    pub key_filter_enabled: bool,
+    #[serde(default = "default_filter")]
+    pub key_filter: (u8, u8),
 }
 
 impl OutputSettings {
@@ -18,6 +24,8 @@ impl OutputSettings {
         Self {
             port_name,
             buffer_pedals: true,
+            key_filter_enabled: false,
+            key_filter: default_filter(),
         }
     }
 }

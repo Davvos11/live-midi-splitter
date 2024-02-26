@@ -2,6 +2,7 @@ use std::sync::{Arc, Mutex};
 use egui::{CollapsingHeader, Rgba, RichText, TextStyle, Ui};
 use crate::backend::output_settings::OutputSettings;
 use crate::backend::properties::Properties;
+use crate::gui::widgets::mapping_settings::mapping_settings;
 
 
 pub fn preset_tab(ui: &mut Ui, properties: Arc<Mutex<Properties>>, id: usize) {
@@ -50,11 +51,7 @@ pub fn preset_tab(ui: &mut Ui, properties: Arc<Mutex<Properties>>, id: usize) {
                 CollapsingHeader::new(RichText::new("Advanced").text_style(TextStyle::Small))
                     .id_source(format!("advanced-{input_id}-{map_id}"))
                     .show(ui, |ui| {
-                        // TODO add info button or hover, explaining the setting.
-                        ui.checkbox(
-                            &mut output.buffer_pedals,
-                            RichText::new("Send pedal events after switching presets").text_style(TextStyle::Small)
-                        );
+                        mapping_settings(ui, output);
                     });
             });
 

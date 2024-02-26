@@ -70,7 +70,9 @@ pub fn create_new_listener(
             if let Some(mapping) = preset.and_then(|p| p.mapping.get(&input_id)) {
                 // Check if we changed presets
                 let changed_preset = preset.unwrap().id != *previous_preset;
-                if changed_preset { *previous_preset = preset.unwrap().id }
+                if changed_preset {
+                    *previous_preset = preset.unwrap().id
+                }
 
                 // Loop through mappings
                 mapping.iter().for_each(|output| {
@@ -104,10 +106,26 @@ pub fn create_new_listener(
                         });
                     }
 
-                    // Send data
-                    // We can unwrap because we checked or inserted the item above
-                    output_handlers.get_mut(&output.port_name).unwrap()
-                        .connection.send(&data).unwrap_or_else(|_| println!("Failed to send to {}", output.port_name));
+                    // Apply filter
+                    let mut send = true;
+                    if let LiveEvent::Midi { channel, message } = event {
+                        match message {
+                            MidiMessage::NoteOn { key, .. } => {
+                                if output.key_filter_enabled &&
+                                    (output.key_filter.0 > key || output.key_filter.1 < key) {
+                                    send = false;
+                                }
+                            }
+                            _ => {}
+                        }
+                    }
+
+                    if send {
+                        // Send data
+                        // We can unwrap because we checked or inserted the item above
+                        output_handlers.get_mut(&output.port_name).unwrap()
+                            .connection.send(&data).unwrap_or_else(|_| println!("Failed to send to {}", output.port_name));
+                    }
 
                     // If this is a note-on or pedal event, save it
                     // If this is a note-off or pedal release event, remove previously saved event

@@ -13,7 +13,7 @@ If you let go of the notes or pedal, the previous instruments will still get the
 - [X] Connect MIDI inputs and outputs
 - [X] Multiple presets that switch where MIDI is sent to
   - [X] Switch between presets using MIDI program change
-- [ ] Filter MIDI ranges, i.e. keyboard split
+- [X] Filter MIDI ranges, i.e. keyboard split
 - [X] Send note-off and pedal off events to previous preset after switching to another
 - [X] Save and load state of the program
 
