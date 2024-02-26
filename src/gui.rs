@@ -12,6 +12,7 @@ use crate::backend::Backend;
 use crate::backend::preset::Preset;
 use crate::backend::properties::Properties;
 use crate::gui::data::RecentFiles;
+use crate::gui::state::TabState;
 use crate::gui::tabs::recent_files::recent_files;
 use crate::gui::widgets::save_load::save_load;
 use crate::gui::widgets::transpose::transpose;
@@ -20,12 +21,14 @@ use crate::utils::load;
 mod tabs;
 mod widgets;
 pub mod data;
+mod state;
 
 pub struct Gui {
     properties: Arc<Mutex<Properties>>,
     ctx_reference: Arc<Mutex<Option<Context>>>,
 
     current_tab: Tab,
+    tab_state: TabState,
     loading: Arc<Mutex<bool>>,
 
     recent_files: Arc<Mutex<RecentFiles>>,
@@ -54,6 +57,7 @@ impl Default for Gui {
             current_tab: Tab::default(),
             loading: Arc::new(Mutex::new(false)),
             recent_files,
+            tab_state: TabState::default(),
         }
     }
 }
@@ -167,7 +171,7 @@ impl eframe::App for Gui {
                             }
                         }
 
-                        preset_tab(ui, Arc::clone(&self.properties), id)
+                        preset_tab(ui, Arc::clone(&self.properties), id, &mut self.tab_state)
                     }
                 }
             });

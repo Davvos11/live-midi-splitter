@@ -1,11 +1,12 @@
 use std::sync::{Arc, Mutex};
-use egui::{CollapsingHeader, Rgba, RichText, TextStyle, Ui};
+use egui::{Rgba, RichText, Ui};
 use crate::backend::output_settings::OutputSettings;
 use crate::backend::properties::Properties;
+use crate::gui::state::TabState;
 use crate::gui::widgets::mapping_settings::mapping_settings;
 
 
-pub fn preset_tab(ui: &mut Ui, properties: Arc<Mutex<Properties>>, id: usize) {
+pub fn preset_tab(ui: &mut Ui, properties: Arc<Mutex<Properties>>, id: usize, tab_state: &mut TabState) {
     let mut properties = properties.lock().unwrap();
     let inputs = properties.inputs.clone();
     let available_outputs = properties.available_outputs.clone();
@@ -48,11 +49,8 @@ pub fn preset_tab(ui: &mut Ui, properties: Arc<Mutex<Properties>>, id: usize) {
                             });
                         });
                 });
-                CollapsingHeader::new(RichText::new("Advanced").text_style(TextStyle::Small))
-                    .id_source(format!("advanced-{input_id}-{map_id}"))
-                    .show(ui, |ui| {
-                        mapping_settings(ui, output);
-                    });
+
+                mapping_settings(ui, output, input_id, tab_state);
             });
 
             if ui.button("Add output").clicked() {
