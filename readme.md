@@ -40,7 +40,10 @@ If you let go of the notes or pedal, the previous instruments will still get the
 
 https://github.com/Davvos11/live-midi-splitter/assets/20478740/42569ce8-50d6-4443-bdc7-896ab15b2215
 
+### Keyboard split / note filter
+
+https://github.com/Davvos11/live-midi-splitter/assets/20478740/d3fc13cf-b49b-4844-b59a-027949fc0d40
+
 ### Switching between presets while holding the sustain pedal:
 
 https://github.com/Davvos11/live-midi-splitter/assets/20478740/45e447b1-ba34-48c8-a962-da70c9fc6c4a
-
