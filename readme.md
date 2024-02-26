@@ -13,9 +13,13 @@ If you let go of the notes or pedal, the previous instruments will still get the
 - [X] Connect MIDI inputs and outputs
 - [X] Multiple presets that switch where MIDI is sent to
   - [X] Switch between presets using MIDI program change
+  - [ ] Allow switching using MIDI pads and send feedback
 - [X] Filter MIDI ranges, i.e. keyboard split
 - [X] Send note-off and pedal off events to previous preset after switching to another
 - [X] Save and load state of the program
+  - [ ] Auto save
+- [ ] Filter and map MIDI CC
+- [ ] Filter and map MIDI channels
 
 ## Usage
 
@@ -28,6 +32,7 @@ If you let go of the notes or pedal, the previous instruments will still get the
    - Create preset(s) with the output(s) you want to send to.
 
 ## Examples:
+**A lot of these screenshots are of older versions of the software**
 
 ![Screenshot_20240107_015515](https://github.com/Davvos11/live-midi-splitter/assets/20478740/ef4f3367-d0cd-4d34-aa2f-c143ecbc6e36)
 
