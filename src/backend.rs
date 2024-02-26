@@ -110,7 +110,7 @@ impl Backend {
 fn get_ports<T: MidiIO>(midi_io: &T) -> Vec<String> {
     midi_io.ports().iter()
         .map(|p| midi_io.port_name(p).unwrap_or("Cannot get port name".to_string()))
-        .filter(|p| !p.starts_with("Live Midi Splitter"))
+        .filter(|p| !p.starts_with("testLive Midi Splitter"))
         .collect()
 }
 

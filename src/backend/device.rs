@@ -78,7 +78,7 @@ impl Debug for Output {
 pub struct ConnectError {}
 
 pub fn new_input() -> MidiInput {
-    MidiInput::new("Live Midi Splitter input").unwrap()
+    MidiInput::new("input Live Midi Splitter").unwrap()
 }
 
 pub fn new_output() -> MidiOutput {
