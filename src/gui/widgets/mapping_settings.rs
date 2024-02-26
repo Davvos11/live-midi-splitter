@@ -1,5 +1,6 @@
 use egui::{RichText, Slider, TextStyle, Ui};
 use egui::collapsing_header::CollapsingState;
+use egui::style::{Selection, Widgets};
 use crate::backend::output_settings::OutputSettings;
 use crate::gui::state::TabState;
 use crate::utils::{midi_to_note, note_to_midi};
@@ -20,7 +21,7 @@ pub fn mapping_settings(ui: &mut Ui, output_settings: &mut OutputSettings, input
     // ui.separator();
 
     let mut header = CollapsingState::load_with_default_open(
-        ui.ctx(), ui.make_persistent_id(format!("advanced-{unique_id}")), false
+        ui.ctx(), ui.make_persistent_id(format!("advanced-{unique_id}")), false,
     );
 
     if header.is_open() && *current_tab == Tab::None {
@@ -47,16 +48,32 @@ pub fn mapping_settings(ui: &mut Ui, output_settings: &mut OutputSettings, input
                     &mut output_settings.key_filter_enabled,
                     RichText::new("Enable note filter"),
                 );
-                ui.add(
-                    Slider::new(&mut output_settings.key_filter.0, 0..=128)
-                        .custom_formatter(|n, _| { midi_to_note(n as u8) })
-                        .custom_parser(note_to_midi)
-                );
-                ui.add(
+
+                ui.vertical(|ui| {
+                    // Hacky way to fill the slider from the current value to the end:
+                    ui.visuals_mut().widgets.inactive.bg_fill = Selection::default().bg_fill;
+                    ui.visuals_mut().selection.bg_fill = Widgets::default().inactive.bg_fill;
+                    ui.add(
+                        Slider::new(&mut output_settings.key_filter.0, 0..=128)
+                            .custom_formatter(|n, _| { midi_to_note(n as u8) })
+                            .custom_parser(note_to_midi)
+                            .trailing_fill(true)
+                    );
+                });
+
+                let moved_high = ui.add(
                     Slider::new(&mut output_settings.key_filter.1, 0..=128)
                         .custom_formatter(|n, _| { midi_to_note(n as u8) })
                         .custom_parser(note_to_midi)
-                );
+                        .trailing_fill(true)
+                ).dragged();
+
+                // Make sure that it is a valid range
+                if moved_high && output_settings.key_filter.1 < output_settings.key_filter.0 {
+                    output_settings.key_filter.0 = output_settings.key_filter.1;
+                } else if output_settings.key_filter.0 > output_settings.key_filter.1 {
+                    output_settings.key_filter.1 = output_settings.key_filter.0;
+                }
             }
         }
     });
