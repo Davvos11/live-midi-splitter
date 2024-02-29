@@ -5,7 +5,7 @@ use egui::Context;
 use midly::{live::LiveEvent, MidiMessage};
 use midly::num::{u4, u7};
 use crate::backend::device::{ConnectError, Input, Output};
-use crate::backend::output_settings::OutputSettings;
+use crate::backend::output_settings::{CcMapping, OutputSettings};
 use crate::backend::properties::Properties;
 
 pub fn create_new_listener(
@@ -114,6 +114,34 @@ pub fn create_new_listener(
                                 if output.key_filter_enabled &&
                                     (output.key_filter.0 > key || output.key_filter.1 < key) {
                                     send = false;
+                                }
+                            }
+                            MidiMessage::Controller { controller, .. } => {
+                                let map =
+                                    output.cc_map.iter().find(|(ch, cc, _)| *ch == channel.as_int() && *cc as u8 == controller.as_int())
+                                        .or(output.cc_map.iter().find(|(ch, cc, _)| *ch == 0 && *cc as u8 == controller.as_int()))
+                                        .or(output.cc_map.iter().find(|(ch, cc, _)| *ch == channel.as_int() && *cc == -1))
+                                        .or(output.cc_map.last());
+                                if let Some((_, _, map)) = map {
+                                    match map {
+                                        CcMapping::PassThroughToChannel(new_channel) => {
+                                            // We use the difference because the channel is set in the last 4 bits of this byte
+                                            // The first 4 bits are always 1011 for cc messages
+                                            // channel is 0..=15, new_channel is 1..=16
+                                            data[0] = data[0] - channel.as_int() + new_channel - 1;
+                                        }
+                                        CcMapping::MapToCc(new_cc) => {
+                                            data[1] = *new_cc;
+                                        }
+                                        CcMapping::MapToChannelCc(new_channel, new_cc) => {
+                                            data[0] = data[0] - channel.as_int() + new_channel - 1;
+                                            data[1] = *new_cc;
+                                        }
+                                        CcMapping::PassThrough => {}
+                                        CcMapping::Ignore => {send = false}
+                                    }
+                                } else {
+                                    println!("Error: no mapping found for cc item, but default should always exist as last item")
                                 }
                             }
                             _ => {}

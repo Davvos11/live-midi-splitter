@@ -10,7 +10,8 @@ pub fn transpose(ui: &mut Ui, properties: Arc<Mutex<Properties>>) {
         .show(ui, |ui| {
             ui.label("Transpose:");
             ui.add(egui::DragValue::new(&mut properties.transpose)
-                .clamp_range(-12..=12),
+                .clamp_range(-12..=12)
+                   .speed(0.1),
             );
             egui::Grid::new("transpose-buttons")
                 .spacing([0.0, -10.0])
