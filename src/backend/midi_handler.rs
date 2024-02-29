@@ -169,7 +169,7 @@ pub fn create_new_listener(
                                 // Remove previously saved event (saved on note-on)
                                 let off_event = LiveEvent::Midi { channel, message: MidiMessage::NoteOff { key, vel: 0.into() } };
                                 if let Some(outputs) = event_buffer.get_mut(&off_event) {
-                                    outputs.remove(&output);
+                                    outputs.remove(output);
                                 }
                             }
                             MidiMessage::Controller { controller, value } => {

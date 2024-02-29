@@ -1,6 +1,5 @@
 use std::fs::File;
 use std::io::BufReader;
-use std::num::ParseIntError;
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 use pro_serde_versioned::{VersionedDeserialize, VersionedSerialize, VersionedUpgrade};

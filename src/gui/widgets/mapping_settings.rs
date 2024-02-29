@@ -103,6 +103,7 @@ pub fn mapping_settings(ui: &mut Ui, output_settings: &mut OutputSettings, input
                         cc_map.iter_mut().enumerate().for_each(|(i, (ch, cc, map))| {
                             body.row(20.0, |mut row| {
                                 row.col(|ui| {
+                                    #[allow(clippy::collapsible_if)] // for clarity
                                     if i != last_index {
                                         if ui.button("X").clicked() {
                                             to_remove = Some(i);
