@@ -18,7 +18,7 @@ If you let go of the notes or pedal, the previous instruments will still get the
 - [X] Send note-off and pedal off events to previous preset after switching to another
 - [X] Save and load state of the program
   - [ ] Auto save
-- [ ] Filter and map MIDI CC
+- [x] Filter and map MIDI CC
 - [ ] Filter and map MIDI channels
 
 ## Usage
