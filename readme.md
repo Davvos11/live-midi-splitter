@@ -44,6 +44,10 @@ https://github.com/Davvos11/live-midi-splitter/assets/20478740/42569ce8-50d6-444
 
 https://github.com/Davvos11/live-midi-splitter/assets/20478740/d3fc13cf-b49b-4844-b59a-027949fc0d40
 
+### Midi CC map and filter
+
+https://github.com/Davvos11/live-midi-splitter/assets/20478740/780a1523-806d-4ed3-be7e-b6cad260b0a6
+
 ### Switching between presets while holding the sustain pedal:
 
 https://github.com/Davvos11/live-midi-splitter/assets/20478740/45e447b1-ba34-48c8-a962-da70c9fc6c4a
