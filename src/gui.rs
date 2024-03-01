@@ -18,7 +18,7 @@ use crate::gui::widgets::save_load::save_load;
 use crate::gui::widgets::transpose::transpose;
 use crate::utils::load;
 
-mod tabs;
+pub mod tabs;
 mod widgets;
 pub mod data;
 mod state;
@@ -27,7 +27,7 @@ pub struct Gui {
     properties: Arc<Mutex<Properties>>,
     ctx_reference: Arc<Mutex<Option<Context>>>,
 
-    current_tab: Tab,
+    current_tab: Arc<Mutex<Tab>>,
     tab_state: TabState,
     loading: Arc<Mutex<bool>>,
 
@@ -54,7 +54,7 @@ impl Default for Gui {
         Self {
             properties,
             ctx_reference,
-            current_tab: Tab::default(),
+            current_tab: Arc::new(Mutex::default()),
             loading: Arc::new(Mutex::new(false)),
             recent_files,
             tab_state: TabState::default(),
@@ -66,7 +66,7 @@ impl Gui {
     pub fn with_preset(path: &String) -> Self {
         let gui = Gui::default();
         let path = PathBuf::from(path);
-        load(&path, Arc::clone(&gui.properties));
+        load(&path, Arc::clone(&gui.properties), Arc::clone(&gui.current_tab));
         gui.recent_files.lock().unwrap().add(path);
 
         gui
@@ -86,7 +86,7 @@ impl eframe::App for Gui {
             egui::Grid::new("header-grid")
                 .show(ui, |ui| {
                     ui.heading("Live MIDI splitter");
-                    save_load(ui, &self.properties, &self.loading, &self.recent_files);
+                    save_load(ui, &self.properties, &self.loading, &self.recent_files, Arc::clone(&self.current_tab));
                     transpose(ui, Arc::clone(&self.properties));
                     ui.end_row();
                 });
@@ -96,8 +96,10 @@ impl eframe::App for Gui {
             .default_width(100.0)
             .show(ctx, |ui| {
                 egui::ScrollArea::vertical().show(ui, |ui| {
-                    ui.selectable_value(&mut self.current_tab, Tab::RecentFiles, "Recent files");
-                    ui.selectable_value(&mut self.current_tab, Tab::InputSettings, "Input settings");
+                    let mut current_tab = self.current_tab.lock().unwrap();
+
+                    ui.selectable_value(&mut *current_tab, Tab::RecentFiles, "Recent files");
+                    ui.selectable_value(&mut *current_tab, Tab::InputSettings, "Input settings");
                     ui.separator();
                     ui.label("Presets:");
 
@@ -106,7 +108,7 @@ impl eframe::App for Gui {
                     let presets = &mut properties.presets;
                     let drag_response = dnd(ui, "presets").show(presets.iter(), |ui, preset, handle, _| {
                         handle.ui(ui, |ui| {
-                            if ui.selectable_value(&mut self.current_tab, Tab::Preset(preset.id), preset.name.clone())
+                            if ui.selectable_value(&mut *current_tab, Tab::Preset(preset.id), preset.name.clone())
                                 .changed() {
                                 // Besides changing the current tab, also change the preset
                                 change_preset_to = Some(preset.id);
@@ -126,7 +128,7 @@ impl eframe::App for Gui {
                         }
                         // Change tab already (otherwise you see the previous preset at this index for one frame)
                         if let Some(id) = change_preset_to {
-                            self.current_tab = Tab::Preset(id);
+                            *current_tab = Tab::Preset(id);
                         }
                         // Update the vector of presets
                         drag_response.update_vec(presets);
@@ -149,9 +151,10 @@ impl eframe::App for Gui {
             }
 
             egui::ScrollArea::vertical().show(ui, |ui| {
-                match self.current_tab {
+                let mut current_tab = self.current_tab.lock().unwrap();
+                match *current_tab {
                     Tab::RecentFiles => {
-                        recent_files(ui, &self.properties, &self.loading, Arc::clone(&self.recent_files));
+                        recent_files(ui, &self.properties, &self.loading, Arc::clone(&self.recent_files), Arc::clone(&self.current_tab));
                     }
                     Tab::InputSettings => {
                         input_settings(ui, Arc::clone(&self.properties));
@@ -163,9 +166,9 @@ impl eframe::App for Gui {
                             let current_preset = properties.current_preset;
                             if current_preset != id {
                                 if current_preset < properties.presets.len() {
-                                    self.current_tab = Tab::Preset(current_preset)
+                                    *current_tab = Tab::Preset(current_preset)
                                 } else {
-                                    self.current_tab = Tab::InputSettings
+                                    *current_tab = Tab::InputSettings
                                 }
                                 ctx.request_repaint();
                             }

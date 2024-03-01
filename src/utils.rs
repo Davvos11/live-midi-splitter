@@ -6,6 +6,7 @@ use pro_serde_versioned::{VersionedDeserialize, VersionedSerialize, VersionedUpg
 use rfd::FileDialog;
 use serde::Deserialize;
 use crate::backend::properties::{Properties, PropertiesV0_3_0, PropertiesVersioned};
+use crate::gui::tabs::Tab;
 
 pub fn save_dialog(properties: Arc<Mutex<Properties>>) -> Option<PathBuf> {
     // TODO error handling
@@ -30,18 +31,18 @@ pub fn save_dialog(properties: Arc<Mutex<Properties>>) -> Option<PathBuf> {
 }
 
 
-pub fn load_dialog(properties: Arc<Mutex<Properties>>) -> Option<PathBuf> {
+pub fn load_dialog(properties: Arc<Mutex<Properties>>, current_tab: Arc<Mutex<Tab>>) -> Option<PathBuf> {
     // TODO error handling
     if let Some(location) = FileDialog::new()
         .add_filter("Live MIDI splitter config", &["lmsc"])
         .pick_file()
     {
-        if load(&location, properties) { return Some(location); }
+        if load(&location, properties, current_tab) { return Some(location); }
     }
     None
 }
 
-pub fn load(location: &PathBuf, properties: Arc<Mutex<Properties>>) -> bool {
+pub fn load(location: &PathBuf, properties: Arc<Mutex<Properties>>, current_tab: Arc<Mutex<Tab>>) -> bool {
     let Ok(file) = File::open(location) else {
         return false;
     };
@@ -61,7 +62,8 @@ pub fn load(location: &PathBuf, properties: Arc<Mutex<Properties>>) -> bool {
             }
         };
 
-        // TODO move to different tab and refresh view
+        *current_tab.lock().unwrap() = Tab::Preset(properties.lock().unwrap().current_preset);
+        // TODO refresh view
         return true;
     }
     false
