@@ -26,6 +26,7 @@ pub fn mapping_settings(ui: &mut Ui, output_settings: &mut OutputSettings, input
     let mut header = CollapsingState::load_with_default_open(
         ui.ctx(), ui.make_persistent_id(format!("advanced-{unique_id}")), false,
     );
+    let is_open = header.is_open();
 
     if header.is_open() && *current_tab == Tab::None {
         *current_tab = Tab::Advanced;
@@ -181,6 +182,12 @@ pub fn mapping_settings(ui: &mut Ui, output_settings: &mut OutputSettings, input
         }
     });
 
+    if is_open { 
+        ui.add_space(3.0);
+        ui.separator();
+        ui.add_space(3.0);
+    }
+    
     // If collapse button clicked
     if collapse.0.clicked() {
         if *current_tab == Tab::None {
@@ -190,7 +197,6 @@ pub fn mapping_settings(ui: &mut Ui, output_settings: &mut OutputSettings, input
         }
     }
 
-    ui.separator();
 }
 
 fn filter_value_selector<Num: emath::Numeric>(value: &mut Num, any_value: f64) -> DragValue {

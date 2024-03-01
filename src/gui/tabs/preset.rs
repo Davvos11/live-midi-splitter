@@ -1,5 +1,5 @@
 use std::sync::{Arc, Mutex};
-use egui::{Rgba, RichText, Ui};
+use egui::{Frame, Margin, Rgba, RichText, Rounding, Ui};
 use crate::backend::output_settings::OutputSettings;
 use crate::backend::properties::Properties;
 use crate::gui::state::TabState;
@@ -20,46 +20,50 @@ pub fn preset_tab(ui: &mut Ui, properties: Arc<Mutex<Properties>>, id: usize, ta
                 .show(ui);
             remove_preset = ui.button("Remove").clicked();
         });
-        ui.separator();
 
         inputs.iter().enumerate().for_each(|(input_id, input)| {
-            ui.label(&input.port_name);
-            let mapping = preset.mapping.entry(input_id).or_default();
-            let mut maps_to_remove = Vec::new();
+            Frame::default()
+                .stroke(ui.visuals().widgets.noninteractive.bg_stroke)
+                .rounding(Rounding::same(5.0))
+                .inner_margin(5.0)
+                .outer_margin(Margin {left: 0.0, right: 0.0, top: 5.0, bottom: 0.0})
+                .show(ui, |ui| {
+                    ui.label(&input.port_name);
+                    let mapping = preset.mapping.entry(input_id).or_default();
+                    let mut maps_to_remove = Vec::new();
 
-            mapping.iter_mut().enumerate().for_each(|(map_id, output)| {
-                ui.horizontal(|ui| {
-                    if ui.button("X").clicked() {
-                        maps_to_remove.push(map_id);
-                    }
-                    // Colour red if the selected output is not available (anymore)
-                    let text = if available_outputs.contains(&output.port_name) {
-                        RichText::new(&output.port_name)
-                    } else {
-                        RichText::new(&output.port_name).color(Rgba::from_rgb(1.0, 0.0, 0.0))
-                    };
-                    egui::ComboBox::from_id_source(format!("mapping-{input_id}-{map_id}"))
-                        .selected_text(text)
-                        .width(0.5) // FIXME width not working
-                        .wrap(true)
-                        .show_ui(ui, |ui| {
-                            ui.style_mut().wrap = Some(true);
-                            available_outputs.iter().for_each(|output_option| {
-                                ui.selectable_value(&mut output.port_name, output_option.clone(), output_option);
-                            });
+                    mapping.iter_mut().enumerate().for_each(|(map_id, output)| {
+                        ui.horizontal(|ui| {
+                            if ui.button("X").clicked() {
+                                maps_to_remove.push(map_id);
+                            }
+                            // Colour red if the selected output is not available (anymore)
+                            let text = if available_outputs.contains(&output.port_name) {
+                                RichText::new(&output.port_name)
+                            } else {
+                                RichText::new(&output.port_name).color(Rgba::from_rgb(1.0, 0.0, 0.0))
+                            };
+                            egui::ComboBox::from_id_source(format!("mapping-{input_id}-{map_id}"))
+                                .selected_text(text)
+                                .width(0.5) // FIXME width not working
+                                .wrap(true)
+                                .show_ui(ui, |ui| {
+                                    ui.style_mut().wrap = Some(true);
+                                    available_outputs.iter().for_each(|output_option| {
+                                        ui.selectable_value(&mut output.port_name, output_option.clone(), output_option);
+                                    });
+                                });
                         });
+
+                        mapping_settings(ui, output, input_id, tab_state);
+                    });
+
+                    if ui.button("Add output").clicked() {
+                        mapping.push(OutputSettings::default());
+                    }
+
+                    maps_to_remove.iter().for_each(|&i| { mapping.remove(i); });
                 });
-
-                mapping_settings(ui, output, input_id, tab_state);
-            });
-
-            if ui.button("Add output").clicked() {
-                mapping.push(OutputSettings::default());
-            }
-
-            ui.separator();
-
-            maps_to_remove.iter().for_each(|&i| { mapping.remove(i); });
         });
     } else {
         ui.heading("Failed to load preset");
