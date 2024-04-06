@@ -5,7 +5,7 @@ use egui::Context;
 use midly::{live::LiveEvent, MidiMessage};
 use midly::num::{u4, u7};
 use crate::backend::device::{ConnectError, Input, Output};
-use crate::backend::output_settings::{CcMapping, OutputSettings};
+use crate::backend::output_settings::{CcMapping, ChannelMapping, OutputSettings};
 use crate::backend::properties::Properties;
 
 pub fn create_new_listener(
@@ -110,10 +110,24 @@ pub fn create_new_listener(
                     let mut send = true;
                     if let LiveEvent::Midi { channel, message } = event {
                         match message {
-                            MidiMessage::NoteOn { key, .. } => {
+                            MidiMessage::NoteOn { key, .. } | MidiMessage::NoteOff {key, ..} => {
                                 if output.key_filter_enabled &&
                                     (output.key_filter.0 > key || output.key_filter.1 < key) {
                                     send = false;
+                                }
+                                let channel_map = output.channel_map.iter().find(|(ch, _)| *ch == channel.as_int())
+                                    .or(output.channel_map.last());
+                                if let Some((_, channel_map)) = channel_map {
+                                    match channel_map {
+                                        ChannelMapping::PassThrough => {}
+                                        ChannelMapping::Channel(new_channel) => {
+                                            // We use the difference because the channel is set in the last 4 bits of this byte
+                                            // The first 4 bits are always 1011 for cc messages
+                                            // channel is 0..=15, new_channel is 1..=16
+                                            data[0] = data[0] - channel.as_int() + new_channel - 1;
+                                        }
+                                        ChannelMapping::Ignore => {send = false}
+                                    }
                                 }
                             }
                             MidiMessage::Controller { controller, .. } => {

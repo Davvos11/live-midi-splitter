@@ -13,6 +13,11 @@ fn default_cc_map() -> CcMap {
     vec![(0, -1, CcMapping::default())]
 }
 
+fn default_channel_map() -> ChannelMap {
+    // Entry 0 for "any other channel"
+    vec![(0, ChannelMapping::default())]
+}
+
 #[derive(Serialize, Deserialize, Clone, Eq, Debug)]
 pub struct OutputSettings {
     pub port_name: String,
@@ -24,6 +29,8 @@ pub struct OutputSettings {
     pub key_filter: (u8, u8),
     #[serde(default = "default_cc_map")]
     pub cc_map: CcMap,
+    #[serde(default = "default_channel_map")]
+    pub channel_map: ChannelMap,
 }
 
 impl OutputSettings {
@@ -34,6 +41,7 @@ impl OutputSettings {
             key_filter_enabled: false,
             key_filter: default_filter(),
             cc_map: default_cc_map(),
+            channel_map: default_channel_map(),
         }
     }
 }
@@ -90,6 +98,38 @@ impl CcMapping {
             CcMapping::MapToCc(_) => { "Send CC _" }
             CcMapping::MapToChannelCc(_, _) => { "Send CC _ to channel _" }
             CcMapping::Ignore => { "Discard" }
+        }
+    }
+}
+
+type ChannelMap = Vec<(u8, ChannelMapping)>;
+
+#[derive(Serialize, Deserialize, Clone, PartialEq, Eq, Debug, Default)]
+pub enum ChannelMapping {
+    #[default]
+    PassThrough,
+    Channel(u8),
+    Ignore,
+}
+
+impl ChannelMapping {
+    pub fn all() -> &'static [ChannelMapping; 3] {
+        &[ChannelMapping::PassThrough, ChannelMapping::Channel(1), ChannelMapping::Ignore]
+    }
+
+    pub fn get_description(&self) -> &'static str {
+        match self {
+            ChannelMapping::PassThrough => {"Send unmodified"}
+            ChannelMapping::Channel(_) => {"Send to channel"}
+            ChannelMapping::Ignore => {"Discard"}
+        }
+    }
+
+    pub fn get_description_with_blanks(&self) -> &'static str {
+        match self {
+            ChannelMapping::PassThrough => {"Send unmodified"}
+            ChannelMapping::Channel(_) => {"Send to channel"}
+            ChannelMapping::Ignore => {"Discard"}
         }
     }
 }
