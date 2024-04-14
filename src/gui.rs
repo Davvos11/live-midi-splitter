@@ -1,19 +1,21 @@
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 use std::thread;
+
 use eframe::Frame;
-use egui::{Context};
+use egui::Context;
 use egui::panel::{Side, TopBottomSide};
 use egui_dnd::dnd;
-use crate::gui::tabs::input_settings::input_settings;
-use crate::gui::tabs::preset::preset_tab;
-use crate::gui::tabs::Tab;
+
 use crate::backend::Backend;
 use crate::backend::preset::Preset;
 use crate::backend::properties::Properties;
 use crate::gui::data::RecentFiles;
 use crate::gui::state::TabState;
+use crate::gui::tabs::input_settings::input_settings;
+use crate::gui::tabs::preset::preset_tab;
 use crate::gui::tabs::recent_files::recent_files;
+use crate::gui::tabs::Tab;
 use crate::gui::widgets::save_load::save_load;
 use crate::gui::widgets::transpose::transpose;
 use crate::utils::load;
@@ -108,8 +110,13 @@ impl eframe::App for Gui {
                     let presets = &mut properties.presets;
                     let drag_response = dnd(ui, "presets").show(presets.iter(), |ui, preset, handle, _| {
                         handle.ui(ui, |ui| {
-                            if ui.selectable_value(&mut *current_tab, Tab::Preset(preset.id), preset.name.clone())
-                                .changed() {
+                            let tab = Tab::Preset(preset.id);
+                            let button = ui.selectable_label(
+                                *current_tab == tab || current_preset == preset.id,
+                                preset.name.clone()
+                            );
+                            if button.clicked() {
+                                *current_tab = tab;
                                 // Besides changing the current tab, also change the preset
                                 change_preset_to = Some(preset.id);
                             }
