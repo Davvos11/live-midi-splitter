@@ -19,7 +19,7 @@ If you let go of the notes or pedal, the previous instruments will still get the
 - [X] Save and load state of the program
   - [ ] Auto save
 - [x] Filter and map MIDI CC
-- [ ] Filter and map MIDI channels
+- [x] Filter and map MIDI channels
 
 ## Usage
 
