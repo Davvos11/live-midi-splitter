@@ -1,3 +1,5 @@
+
+https://github.com/Davvos11/live-midi-splitter/assets/20478740/c737d032-1f38-4a21-a858-9e326d178a33
 # Live Midi Splitter
 
 Control multiple MIDI instruments with one input.
@@ -5,8 +7,7 @@ Control multiple MIDI instruments with one input.
 Inspired by https://sourceforge.net/projects/midi-layer/,
 but easier to use with Jack/Pipewire VSTs in mind and better suited for playing live.
 
-An example of a feature for live use is that you can switch to a different preset while holding down notes of the sustain pedal.  
-If you let go of the notes or pedal, the previous instruments will still get the off messages and not hold the notes forever.
+https://github.com/Davvos11/live-midi-splitter/assets/20478740/6d5f8208-849c-4c1c-88c6-42b0ba117915
 
 ## Features / to-do
 
@@ -31,7 +32,7 @@ If you let go of the notes or pedal, the previous instruments will still get the
    - Select the input(s) that you want to use.
    - Create preset(s) with the output(s) you want to send to.
 
-## Examples:
+## Old examples:
 **A lot of these screenshots are of older versions of the software**
 
 ![Screenshot_20240107_015515](https://github.com/Davvos11/live-midi-splitter/assets/20478740/ef4f3367-d0cd-4d34-aa2f-c143ecbc6e36)
