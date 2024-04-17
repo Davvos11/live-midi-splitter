@@ -17,6 +17,7 @@ pub mod input_settings;
 pub mod midi_handler;
 mod device;
 pub mod output_settings;
+pub mod common_settings;
 
 pub struct Backend {
     properties: Arc<Mutex<Properties>>,

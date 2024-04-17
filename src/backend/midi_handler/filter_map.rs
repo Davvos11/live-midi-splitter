@@ -1,0 +1,62 @@
+use midly::live::LiveEvent;
+use midly::MidiMessage;
+use crate::backend::common_settings::CommonSettings;
+use crate::backend::output_settings::{CcMapping, ChannelMapping};
+
+pub fn apply_filter_map(data: &mut [u8], send: &mut bool, event: &LiveEvent, settings: &impl CommonSettings) {
+    {
+        if let LiveEvent::Midi { channel, message } = event {
+            match message {
+                MidiMessage::NoteOn { key, .. } | MidiMessage::NoteOff { key, .. } => {
+                    if settings.key_filter_enabled() &&
+                        (settings.key_filter().0 > *key || settings.key_filter().1 < *key) {
+                        *send = false;
+                    }
+                    let channel_map = settings.channel_map().iter().find(|(ch, _)| *ch == channel.as_int() + 1)
+                        .or(settings.channel_map().last());
+                    if let Some((_, channel_map)) = channel_map {
+                        match channel_map {
+                            ChannelMapping::PassThrough => {}
+                            ChannelMapping::Channel(new_channel) => {
+                                // We use the difference because the channel is set in the last 4 bits of this byte
+                                // The first 4 bits are always 1011 for cc messages
+                                // channel is 0..=15, new_channel is 1..=16
+                                data[0] = data[0] - channel.as_int() + new_channel - 1;
+                            }
+                            ChannelMapping::Ignore => { *send = false }
+                        }
+                    }
+                }
+                MidiMessage::Controller { controller, .. } => {
+                    let map =
+                        settings.cc_map().iter().find(|(ch, cc, _)| *ch == channel.as_int() && *cc as u8 == controller.as_int())
+                            .or(settings.cc_map().iter().find(|(ch, cc, _)| *ch == 0 && *cc as u8 == controller.as_int()))
+                            .or(settings.cc_map().iter().find(|(ch, cc, _)| *ch == channel.as_int() && *cc == -1))
+                            .or(settings.cc_map().last());
+                    if let Some((_, _, map)) = map {
+                        match map {
+                            CcMapping::PassThroughToChannel(new_channel) => {
+                                // We use the difference because the channel is set in the last 4 bits of this byte
+                                // The first 4 bits are always 1011 for cc messages
+                                // channel is 0..=15, new_channel is 1..=16
+                                data[0] = data[0] - channel.as_int() + new_channel - 1;
+                            }
+                            CcMapping::MapToCc(new_cc) => {
+                                data[1] = *new_cc;
+                            }
+                            CcMapping::MapToChannelCc(new_channel, new_cc) => {
+                                data[0] = data[0] - channel.as_int() + new_channel - 1;
+                                data[1] = *new_cc;
+                            }
+                            CcMapping::PassThrough => {}
+                            CcMapping::Ignore => { *send = false }
+                        }
+                    } else {
+                        println!("Error: no mapping found for cc item, but default should always exist as last item")
+                    }
+                }
+                _ => {}
+            }
+        }
+    }
+} 

@@ -176,7 +176,7 @@ impl eframe::App for Gui {
                         recent_files(ui, &self.properties, &self.loading, Arc::clone(&self.recent_files), Arc::clone(&self.current_tab));
                     }
                     Tab::InputSettings => {
-                        input_settings(ui, Arc::clone(&self.properties));
+                        input_settings(ui, Arc::clone(&self.properties), &mut self.tab_state);
                     }
                     Tab::Preset(id) => {
                         // Handle preset change by backend

@@ -1,19 +1,20 @@
 use std::hash::{Hash, Hasher};
 use serde::{Deserialize, Serialize};
+use crate::backend::common_settings::CommonSettings;
 
 // Serde does not accept default = true, so we make it more stupid to make it work
 fn get_true() -> bool {
     true
 }
 
-fn default_filter() -> (u8, u8) { (0, 128) }
+pub fn default_filter() -> (u8, u8) { (0, 128) }
 
-fn default_cc_map() -> CcMap {
+pub fn default_cc_map() -> CcMap {
     // Entry -1 corresponds to "any other cc", and 0 for "any other channel"
     vec![(0, -1, CcMapping::default())]
 }
 
-fn default_channel_map() -> ChannelMap {
+pub fn default_channel_map() -> ChannelMap {
     // Entry 0 for "any other channel"
     vec![(0, ChannelMapping::default())]
 }
@@ -46,6 +47,40 @@ impl OutputSettings {
     }
 }
 
+impl CommonSettings for OutputSettings {
+    fn key_filter_enabled_mut(&mut self) -> &mut bool {
+        &mut self.key_filter_enabled
+    }
+
+    fn key_filter_mut(&mut self) -> &mut (u8, u8) {
+        &mut self.key_filter
+    }
+
+    fn cc_map_mut(&mut self) -> &mut CcMap {
+        &mut self.cc_map
+    }
+
+    fn channel_map_mut(&mut self) -> &mut ChannelMap {
+        &mut self.channel_map
+    }
+
+    fn key_filter_enabled(&self) -> bool {
+        self.key_filter_enabled
+    }
+
+    fn key_filter(&self) -> (u8, u8) {
+        self.key_filter
+    }
+
+    fn cc_map(&self) -> &CcMap {
+        &self.cc_map
+    }
+
+    fn channel_map(&self) -> &ChannelMap {
+        &self.channel_map
+    }
+}
+
 impl Default for OutputSettings {
     fn default() -> Self {
         Self::new("".to_string())
@@ -64,7 +99,7 @@ impl PartialEq<Self> for OutputSettings {
     }
 }
 
-type CcMap = Vec<(u8, i8, CcMapping)>;
+pub type CcMap = Vec<(u8, i8, CcMapping)>;
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, Eq, Debug, Default)]
 pub enum CcMapping {
@@ -102,7 +137,7 @@ impl CcMapping {
     }
 }
 
-type ChannelMap = Vec<(u8, ChannelMapping)>;
+pub type ChannelMap = Vec<(u8, ChannelMapping)>;
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, Eq, Debug, Default)]
 pub enum ChannelMapping {
@@ -119,17 +154,17 @@ impl ChannelMapping {
 
     pub fn get_description(&self) -> &'static str {
         match self {
-            ChannelMapping::PassThrough => {"Send unmodified"}
-            ChannelMapping::Channel(_) => {"Send to channel"}
-            ChannelMapping::Ignore => {"Discard"}
+            ChannelMapping::PassThrough => { "Send unmodified" }
+            ChannelMapping::Channel(_) => { "Send to channel" }
+            ChannelMapping::Ignore => { "Discard" }
         }
     }
 
     pub fn get_description_with_blanks(&self) -> &'static str {
         match self {
-            ChannelMapping::PassThrough => {"Send unmodified"}
-            ChannelMapping::Channel(_) => {"Send to channel"}
-            ChannelMapping::Ignore => {"Discard"}
+            ChannelMapping::PassThrough => { "Send unmodified" }
+            ChannelMapping::Channel(_) => { "Send to channel" }
+            ChannelMapping::Ignore => { "Discard" }
         }
     }
 }
