@@ -70,9 +70,6 @@ pub fn preset_tab(ui: &mut Ui, properties: Arc<Mutex<Properties>>, id: usize, ta
     }
 
     if remove_preset {
-        properties.presets.remove(id);
-        // Update "internal" ids to match position in list
-        properties.presets.iter_mut().enumerate().for_each(|(i, p)| p.id = i);
-        properties.current_preset = if id > 0 { id - 1 } else { 0 };
+        properties.remove_preset(id);
     }
 }

@@ -83,6 +83,8 @@ impl eframe::App for Gui {
         }
 
         let mut change_preset_to = None;
+        let mut delete_preset = None;
+        let mut duplicate_preset = None;
 
         egui::TopBottomPanel::new(TopBottomSide::Top, "header").show(ctx, |ui| {
             egui::Grid::new("header-grid")
@@ -120,6 +122,16 @@ impl eframe::App for Gui {
                                 // Besides changing the current tab, also change the preset
                                 change_preset_to = Some(preset.id);
                             }
+                            button.context_menu(|ui|{
+                                if ui.button("Duplicate").clicked() {
+                                    duplicate_preset = Some(preset.id);
+                                    ui.close_menu();
+                                }
+                                if ui.button("Delete").clicked() {
+                                    delete_preset = Some(preset.id);
+                                    ui.close_menu();
+                                }
+                            });
                         });
                     });
 
@@ -187,8 +199,15 @@ impl eframe::App for Gui {
             });
         });
 
+        let mut properties = self.properties.lock().unwrap();
         if let Some(new_preset) = change_preset_to {
-            self.properties.lock().unwrap().current_preset = new_preset;
+            properties.current_preset = new_preset;
+        }
+        if let Some(id) = delete_preset {
+            properties.remove_preset(id);
+        }
+        if let Some(id) = duplicate_preset {
+            properties.duplicate_preset(id);
         }
     }
 }
