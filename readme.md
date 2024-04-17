@@ -1,5 +1,3 @@
-
-https://github.com/Davvos11/live-midi-splitter/assets/20478740/c737d032-1f38-4a21-a858-9e326d178a33
 # Live Midi Splitter
 
 Control multiple MIDI instruments with one input.
