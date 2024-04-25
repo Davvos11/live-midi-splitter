@@ -5,6 +5,7 @@ use crate::backend::input_settings::InputSettings;
 use crate::gui::state::TabState;
 use crate::gui::widgets::mapping_settings::cc_map::cc_map_settings;
 use crate::gui::widgets::mapping_settings::note_filter::note_filter_settings;
+use crate::gui::widgets::mapping_settings::velocity_map::velocity_map_settings;
 
 #[derive(PartialEq, Eq, Default)]
 pub enum InputTab {
@@ -13,6 +14,7 @@ pub enum InputTab {
     Advanced,
     NoteFilter,
     CcMap,
+    VelocityMap,
 }
 
 pub fn input_mapping_settings(ui: &mut Ui, input_settings: &mut InputSettings, input_id: usize, tab_state: &mut TabState) {
@@ -33,8 +35,9 @@ pub fn input_mapping_settings(ui: &mut Ui, input_settings: &mut InputSettings, i
     }
 
     let collapse = header.show_header(ui, |ui| {
-        ui.selectable_value(current_tab, InputTab::Advanced, RichText::new("Advanced").text_style(TextStyle::Small));
+        // ui.selectable_value(current_tab, InputTab::Advanced, RichText::new("Advanced").text_style(TextStyle::Small));
         ui.selectable_value(current_tab, InputTab::NoteFilter, RichText::new("Notes").text_style(TextStyle::Small));
+        ui.selectable_value(current_tab, InputTab::VelocityMap, RichText::new("Velocity").text_style(TextStyle::Small));
         ui.selectable_value(current_tab, InputTab::CcMap, RichText::new("CC").text_style(TextStyle::Small));
     }).body(|ui| {
         match current_tab {
@@ -47,6 +50,9 @@ pub fn input_mapping_settings(ui: &mut Ui, input_settings: &mut InputSettings, i
             }
             InputTab::CcMap => {
                 cc_map_settings(ui, input_settings.cc_map_mut(), unique_id);
+            }
+            InputTab::VelocityMap => {
+                velocity_map_settings(ui, input_settings, unique_id);
             }
         }
     });

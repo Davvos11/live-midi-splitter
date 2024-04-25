@@ -639,6 +639,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "egui_plot"
+version = "0.24.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "29b484821a5b336af40a34151a940f52bef0f1ab56ec0d8cf80f74783eaae412"
+dependencies = [
+ "egui",
+]
+
+[[package]]
 name = "either"
 version = "1.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1147,6 +1156,7 @@ dependencies = [
  "egui",
  "egui_dnd",
  "egui_extras",
+ "egui_plot",
  "midir",
  "midly",
  "pro-serde-versioned",

@@ -1,3 +1,4 @@
+use std::f64::consts::E;
 use std::hash::{Hash, Hasher};
 use serde::{Deserialize, Serialize};
 use crate::backend::common_settings::CommonSettings;
@@ -19,7 +20,7 @@ pub fn default_channel_map() -> ChannelMap {
     vec![(0, ChannelMapping::default())]
 }
 
-#[derive(Serialize, Deserialize, Clone, Eq, Debug)]
+#[derive(Serialize, Deserialize, Clone,  Debug)]
 pub struct OutputSettings {
     pub port_name: String,
     #[serde(default = "get_true")]
@@ -32,6 +33,8 @@ pub struct OutputSettings {
     pub cc_map: CcMap,
     #[serde(default = "default_channel_map")]
     pub channel_map: ChannelMap,
+    #[serde(default)]
+    pub velocity_curve: VelocityCurve,
 }
 
 impl OutputSettings {
@@ -43,6 +46,7 @@ impl OutputSettings {
             key_filter: default_filter(),
             cc_map: default_cc_map(),
             channel_map: default_channel_map(),
+            velocity_curve: VelocityCurve::default()
         }
     }
 }
@@ -64,6 +68,10 @@ impl CommonSettings for OutputSettings {
         &mut self.channel_map
     }
 
+    fn velocity_curve_mut(&mut self) -> &mut VelocityCurve {
+        &mut self.velocity_curve
+    }
+
     fn key_filter_enabled(&self) -> bool {
         self.key_filter_enabled
     }
@@ -78,6 +86,10 @@ impl CommonSettings for OutputSettings {
 
     fn channel_map(&self) -> &ChannelMap {
         &self.channel_map
+    }
+
+    fn velocity_curve(&self) -> &VelocityCurve {
+        &self.velocity_curve
     }
 }
 
@@ -167,4 +179,34 @@ impl ChannelMapping {
             ChannelMapping::Ignore => { "Discard" }
         }
     }
+}
+
+#[derive(Serialize, Deserialize, Clone, PartialEq, Debug, Default)]
+pub enum VelocityCurve {
+    #[default]
+    Linear,
+    Fixed(u8),
+    Exponential(f64),
+    Logarithmic(f64),
+    SCurve(f64),
+}
+
+
+impl VelocityCurve {
+    pub fn get_y(&self, x: f64) -> f64 {
+       match self {
+           VelocityCurve::Linear => {x}
+           VelocityCurve::Fixed(value) => {*value as f64}
+           VelocityCurve::Exponential(exp) => {
+               127.0 * (x / 127.0).powf(*exp)
+           }
+           VelocityCurve::Logarithmic(alpha) => {
+               (127.0 / (1.0 + *alpha * 127.0).log2()) * (1.0 + *alpha * x).log2()
+           }
+           VelocityCurve::SCurve(alpha) => {
+               127.0 / (1.0 + E.powf(-alpha / 10.0 * (x - 63.5)))
+           }
+       }
+    }
+
 }

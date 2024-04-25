@@ -2,13 +2,14 @@ use std::collections::{HashMap, HashSet};
 use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::Duration;
+
 use egui::Context;
 use midir::MidiIO;
 use midly::live::LiveEvent;
 use midly::num::{u4, u7};
+
 use crate::backend::device::{Input, new_input, new_output, Output};
 use crate::backend::midi_handler::create_new_listener;
-use crate::backend::output_settings::OutputSettings;
 use crate::backend::properties::Properties;
 
 pub mod preset;
@@ -25,7 +26,7 @@ pub struct Backend {
 
     input_listeners: Vec<Input>,
     output_handlers: Arc<Mutex<HashMap<String, Output>>>,
-    event_buffer: Arc<Mutex<HashMap<LiveEvent<'static>, HashSet<OutputSettings>>>>,
+    event_buffer: Arc<Mutex<HashMap<LiveEvent<'static>, HashSet<String>>>>,
     held_pedals: Arc<Mutex<HashMap<(u4, u7), u7>>>, // (channel, controller): value
 }
 

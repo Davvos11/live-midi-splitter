@@ -1,15 +1,24 @@
 use midly::live::LiveEvent;
 use midly::MidiMessage;
+
 use crate::backend::common_settings::CommonSettings;
 use crate::backend::output_settings::{CcMapping, ChannelMapping};
 
-pub fn apply_filter_map(data: &mut [u8], send: &mut bool, event: &LiveEvent, settings: &impl CommonSettings) {
+pub fn apply_filter_map(data: &mut [u8], send: &mut bool, settings: &impl CommonSettings) {
     {
+        // Parse midi data
+        let event = LiveEvent::parse(data);
+        if let Err(error) = event {
+            eprintln!("Midi parse error: {error}");
+            return;
+        }
+        let event = event.unwrap();
+        
         if let LiveEvent::Midi { channel, message } = event {
             match message {
-                MidiMessage::NoteOn { key, .. } | MidiMessage::NoteOff { key, .. } => {
+                MidiMessage::NoteOn { key, vel } | MidiMessage::NoteOff { key, vel } => {
                     if settings.key_filter_enabled() &&
-                        (settings.key_filter().0 > *key || settings.key_filter().1 < *key) {
+                        (settings.key_filter().0 > key || settings.key_filter().1 < key) {
                         *send = false;
                     }
                     let channel_map = settings.channel_map().iter().find(|(ch, _)| *ch == channel.as_int() + 1)
@@ -25,6 +34,10 @@ pub fn apply_filter_map(data: &mut [u8], send: &mut bool, event: &LiveEvent, set
                             }
                             ChannelMapping::Ignore => { *send = false }
                         }
+                    }
+                    if vel != 0 {
+                        let x = settings.velocity_curve().get_y(vel.as_int() as f64);
+                        data[2] = f64::max(1.0, x) as u8
                     }
                 }
                 MidiMessage::Controller { controller, .. } => {

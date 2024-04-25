@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 use crate::backend::common_settings::CommonSettings;
-use crate::backend::output_settings::{CcMap, ChannelMap, default_channel_map, default_cc_map, default_filter};
+use crate::backend::output_settings::{CcMap, ChannelMap, default_channel_map, default_cc_map, default_filter, VelocityCurve};
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct InputSettings {
@@ -14,6 +14,8 @@ pub struct InputSettings {
     pub cc_map: CcMap,
     #[serde(default = "default_channel_map")]
     pub channel_map: ChannelMap,
+    #[serde(default)]
+    pub velocity_curve: VelocityCurve,
 }
 
 impl InputSettings {
@@ -25,6 +27,7 @@ impl InputSettings {
             key_filter: default_filter(),
             cc_map: default_cc_map(),
             channel_map: default_channel_map(),
+            velocity_curve: VelocityCurve::default()
         }
     }
 }
@@ -46,6 +49,10 @@ impl CommonSettings for InputSettings {
         &mut self.channel_map
     }
 
+    fn velocity_curve_mut(&mut self) -> &mut VelocityCurve {
+        &mut self.velocity_curve
+    }
+
     fn key_filter_enabled(&self) -> bool {
         self.key_filter_enabled
     }
@@ -60,6 +67,10 @@ impl CommonSettings for InputSettings {
 
     fn channel_map(&self) -> &ChannelMap {
         &self.channel_map
+    }
+
+    fn velocity_curve(&self) -> &VelocityCurve {
+        &self.velocity_curve
     }
 }
 

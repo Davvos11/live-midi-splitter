@@ -19,6 +19,7 @@ https://github.com/Davvos11/live-midi-splitter/assets/20478740/6d5f8208-849c-4c1
   - [ ] Auto save
 - [x] Filter and map MIDI CC
 - [x] Filter and map MIDI channels
+- [x] Velocity curves
 
 ## Usage
 
