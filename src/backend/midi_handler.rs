@@ -170,7 +170,6 @@ pub fn create_new_listener(
                 // Send note-off, after-touch and pedal release events to outputs that are no longer active
                 let mut event_buffer = event_buffer.lock().unwrap();
                 let mut off_event = None;
-                let mut is_pedal_event = false;
                 if let LiveEvent::Midi { channel, message } = event {
                     match message {
                         MidiMessage::NoteOff { key, .. } |
@@ -183,11 +182,9 @@ pub fn create_new_listener(
                             match controller.as_int() {
                                 64 | 66 | 69 => {
                                     if value < 64 {
-                                        // TODO sends events where not necessary?
                                         off_event = Some(
                                             LiveEvent::Midi { channel, message: MidiMessage::Controller { controller, value: 0.into() } }
                                         );
-                                        is_pedal_event = true;
                                         // Mark pedal as released
                                         held_pedals.lock().unwrap().remove(&(channel, controller));
                                     }
@@ -199,16 +196,13 @@ pub fn create_new_listener(
                     }
                 };
                 if let Some(off_event) = off_event {
-                    if let Some(outputs) = event_buffer.get(&off_event) {
+                    // Get outputs that need this off event _and_ remove it from the buffer.
+                    if let Some(outputs) = event_buffer.remove(&off_event) {
                         // Send to outputs that still need note-off events
                         outputs.iter().for_each(|output_name| {
-                            // if !output.buffer_pedals && is_pedal_event {
-                            //     return;
-                            // }
                             output_handlers.get_mut(output_name).unwrap()
                                 .connection.send(&data).unwrap_or_else(|_| println!("Failed to send to {output_name}", ));
                         });
-                        if outputs.is_empty() { event_buffer.remove(&off_event); }
                     }
                 }
             } else {
