@@ -1,7 +1,7 @@
-use std::f64::consts::E;
 use std::hash::{Hash, Hasher};
 use serde::{Deserialize, Serialize};
 use crate::backend::common_settings::CommonSettings;
+use crate::backend::output_settings::OutsideRange::Scale;
 
 // Serde does not accept default = true, so we make it more stupid to make it work
 fn get_true() -> bool {
@@ -20,7 +20,7 @@ pub fn default_channel_map() -> ChannelMap {
     vec![(0, ChannelMapping::default())]
 }
 
-#[derive(Serialize, Deserialize, Clone,  Debug)]
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct OutputSettings {
     pub port_name: String,
     #[serde(default = "get_true")]
@@ -35,6 +35,8 @@ pub struct OutputSettings {
     pub channel_map: ChannelMap,
     #[serde(default)]
     pub velocity_curve: VelocityCurve,
+    #[serde(default)]
+    pub velocity_range: VelocityRange
 }
 
 impl OutputSettings {
@@ -46,7 +48,8 @@ impl OutputSettings {
             key_filter: default_filter(),
             cc_map: default_cc_map(),
             channel_map: default_channel_map(),
-            velocity_curve: VelocityCurve::default()
+            velocity_curve: VelocityCurve::default(),
+            velocity_range: VelocityRange::default(),
         }
     }
 }
@@ -72,6 +75,10 @@ impl CommonSettings for OutputSettings {
         &mut self.velocity_curve
     }
 
+    fn velocity_range_mut(&mut self) -> &mut VelocityRange {
+        &mut self.velocity_range
+    }
+
     fn key_filter_enabled(&self) -> bool {
         self.key_filter_enabled
     }
@@ -90,6 +97,10 @@ impl CommonSettings for OutputSettings {
 
     fn velocity_curve(&self) -> &VelocityCurve {
         &self.velocity_curve
+    }
+
+    fn velocity_range(&self) -> &VelocityRange {
+        &self.velocity_range
     }
 }
 
@@ -192,21 +203,29 @@ pub enum VelocityCurve {
 }
 
 
-impl VelocityCurve {
-    pub fn get_y(&self, x: f64) -> f64 {
-       match self {
-           VelocityCurve::Linear => {x}
-           VelocityCurve::Fixed(value) => {*value as f64}
-           VelocityCurve::Exponential(exp) => {
-               127.0 * (x / 127.0).powf(*exp)
-           }
-           VelocityCurve::Logarithmic(alpha) => {
-               (127.0 / (1.0 + *alpha * 127.0).log2()) * (1.0 + *alpha * x).log2()
-           }
-           VelocityCurve::SCurve(alpha) => {
-               127.0 / (1.0 + E.powf(-alpha / 10.0 * (x - 63.5)))
-           }
-       }
-    }
 
+#[derive(Serialize, Deserialize, Clone, PartialEq, Debug)]
+pub struct VelocityRange {
+    pub min: u8,
+    pub max: u8,
+    pub below_min: OutsideRange,
+    pub above_max: OutsideRange,
+}
+
+impl Default for VelocityRange {
+    fn default() -> Self {
+        Self {
+            min: 1,
+            max: 127,
+            below_min: Scale,
+            above_max: Scale,
+        }
+    }
+}
+
+#[derive(Serialize, Deserialize, Clone, PartialEq, Debug)]
+pub enum OutsideRange {
+    Ignore,
+    Clamp,
+    Scale
 }

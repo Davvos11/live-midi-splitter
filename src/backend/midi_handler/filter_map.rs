@@ -36,7 +36,7 @@ pub fn apply_filter_map(data: &mut [u8], send: &mut bool, settings: &impl Common
                         }
                     }
                     if vel != 0 {
-                        let x = settings.velocity_curve().get_y(vel.as_int() as f64);
+                        let x = settings.get_velocity(vel.as_int() as f64);
                         data[2] = f64::max(1.0, x) as u8
                     }
                 }
