@@ -13,6 +13,7 @@ https://github.com/Davvos11/live-midi-splitter/assets/20478740/6d5f8208-849c-4c1
 - [X] Multiple presets that switch where MIDI is sent to
   - [X] Switch between presets using MIDI program change
   - [ ] Allow switching using MIDI pads and send feedback
+  - [ ] Preset groups/variants
 - [X] Filter MIDI ranges, i.e. keyboard split
 - [X] Send note-off and pedal off events to previous preset after switching to another
 - [X] Save and load state of the program
