@@ -55,18 +55,6 @@ pub fn create_new_listener(
 
             // Make mutable copy of data
             let mut data = data.to_vec();
-            // Apply transpose
-            if properties.transpose != 0 {
-                if let LiveEvent::Midi { message, .. } = event {
-                    match message {
-                        MidiMessage::NoteOff { .. } | MidiMessage::NoteOn { .. } | MidiMessage::Aftertouch { .. } => {
-                            // Change raw data directly. data[1] is the key value. set to 0 at underflow
-                            data[1] = data[1].checked_add_signed(properties.transpose).unwrap_or(0);
-                        }
-                        _ => {}
-                    }
-                }
-            }
 
             let mut output_handlers = output_handlers.lock().unwrap();
             // Get preset
@@ -111,10 +99,25 @@ pub fn create_new_listener(
                     }
 
                     let mut send = true;
+                    let mut ignore_transpose = output.transpose.ignore_global;
                     if let Some(input_settings) = properties.inputs.get(input_id) {
                         apply_filter_map(&mut data, &mut send, input_settings);
+                        ignore_transpose |= input_settings.transpose.ignore_global;
                     }
                     apply_filter_map(&mut data, &mut send, output);
+
+                    // Apply global transpose
+                    if properties.transpose != 0 && !ignore_transpose{
+                        if let LiveEvent::Midi { message, .. } = event {
+                            match message {
+                                MidiMessage::NoteOff { .. } | MidiMessage::NoteOn { .. } | MidiMessage::Aftertouch { .. } => {
+                                    // Change raw data directly. data[1] is the key value. set to 0 at underflow
+                                    data[1] = data[1].checked_add_signed(properties.transpose).unwrap_or(0);
+                                }
+                                _ => {}
+                            }
+                        }
+                    }
 
                     if send {
                         // Send data

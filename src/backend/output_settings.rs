@@ -2,7 +2,7 @@ use std::hash::{Hash, Hasher};
 
 use serde::{Deserialize, Serialize};
 
-use crate::backend::common_settings::{CcMap, ChannelMap, CommonSettings, default_cc_map, default_channel_map, default_filter, VelocityCurve, VelocityRange};
+use crate::backend::common_settings::{CcMap, ChannelMap, CommonSettings, default_cc_map, default_channel_map, default_filter, Transpose, VelocityCurve, VelocityRange};
 
 // Serde does not accept default = true, so we make it more stupid to make it work
 fn get_true() -> bool {
@@ -26,7 +26,9 @@ pub struct OutputSettings {
     #[serde(default)]
     pub velocity_curve: VelocityCurve,
     #[serde(default)]
-    pub velocity_range: VelocityRange
+    pub velocity_range: VelocityRange,
+    #[serde(default)]
+    pub transpose: Transpose,
 }
 
 impl OutputSettings {
@@ -40,6 +42,7 @@ impl OutputSettings {
             channel_map: default_channel_map(),
             velocity_curve: VelocityCurve::default(),
             velocity_range: VelocityRange::default(),
+            transpose: Transpose::default(),
         }
     }
 }
@@ -69,6 +72,10 @@ impl CommonSettings for OutputSettings {
         &mut self.velocity_range
     }
 
+    fn transpose_mut(&mut self) -> &mut Transpose {
+        &mut self.transpose
+    }
+
     fn key_filter_enabled(&self) -> bool {
         self.key_filter_enabled
     }
@@ -91,6 +98,10 @@ impl CommonSettings for OutputSettings {
 
     fn velocity_range(&self) -> &VelocityRange {
         &self.velocity_range
+    }
+
+    fn transpose(&self) -> &Transpose {
+        &self.transpose
     }
 }
 

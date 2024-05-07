@@ -20,6 +20,7 @@ pub trait CommonSettings {
     fn channel_map_mut(&mut self) -> &mut ChannelMap;
     fn velocity_curve_mut(&mut self) -> &mut VelocityCurve;
     fn velocity_range_mut(&mut self) -> &mut VelocityRange;
+    fn transpose_mut(&mut self) -> &mut Transpose;
 
     fn key_filter_enabled(&self) -> bool;
     fn key_filter(&self) -> (u8, u8);
@@ -27,6 +28,7 @@ pub trait CommonSettings {
     fn channel_map(&self) -> &ChannelMap;
     fn velocity_curve(&self) -> &VelocityCurve;
     fn velocity_range(&self) -> &VelocityRange;
+    fn transpose(&self) -> &Transpose;
 
 
     fn get_velocity(&self, vel_in: f64) -> f64 {
@@ -179,4 +181,11 @@ pub enum OutsideRange {
     Ignore,
     Clamp,
     Scale,
+}
+
+
+#[derive(Serialize, Deserialize, Default, Clone, Debug)]
+pub struct Transpose {
+    pub value: i8,
+    pub ignore_global: bool
 }

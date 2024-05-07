@@ -5,9 +5,17 @@ use egui_extras::{Column, TableBuilder};
 
 use crate::backend::common_settings::{ChannelMapping, CommonSettings};
 use crate::gui::widgets::mapping_settings::filter_value_selector;
+use crate::gui::widgets::transpose::transpose;
 use crate::utils::{midi_to_note, note_to_midi};
 
 pub fn note_filter_settings(ui: &mut Ui, settings: &mut impl CommonSettings, unique_id: String) {
+    ui.horizontal(|ui| {
+        transpose(ui, &mut settings.transpose_mut().value);
+        ui.checkbox(&mut settings.transpose_mut().ignore_global, RichText::new("Ignore global").small())
+    });
+
+    ui.separator();
+
     ui.checkbox(
         settings.key_filter_enabled_mut(),
         RichText::new("Enable note filter"),

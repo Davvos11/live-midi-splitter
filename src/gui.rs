@@ -91,7 +91,8 @@ impl eframe::App for Gui {
                 .show(ui, |ui| {
                     ui.heading("Live MIDI splitter");
                     save_load(ui, &self.properties, &self.loading, &self.recent_files, Arc::clone(&self.current_tab));
-                    transpose(ui, Arc::clone(&self.properties));
+                    let mut properties = self.properties.lock().unwrap();
+                    transpose(ui, &mut properties.transpose);
                     ui.end_row();
                 });
         });
