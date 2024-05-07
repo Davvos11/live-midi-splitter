@@ -1,8 +1,8 @@
 use midly::live::LiveEvent;
 use midly::MidiMessage;
 
+use crate::backend::common_settings::{CcMapping, ChannelMapping};
 use crate::backend::common_settings::CommonSettings;
-use crate::backend::output_settings::{CcMapping, ChannelMapping};
 
 pub fn apply_filter_map(data: &mut [u8], send: &mut bool, settings: &impl CommonSettings) {
     {

@@ -1,8 +1,8 @@
 use eframe::epaint::Color32;
 use egui::{Button, ComboBox, DragValue, RichText, TextStyle, Ui};
 use egui_extras::{Column, TableBuilder};
+use crate::backend::common_settings::{CcMap, CcMapping};
 
-use crate::backend::output_settings::{CcMap, CcMapping};
 use crate::gui::widgets::mapping_settings::filter_value_selector;
 
 pub fn cc_map_settings(ui: &mut Ui, cc_map: &mut CcMap, unique_id: String) {

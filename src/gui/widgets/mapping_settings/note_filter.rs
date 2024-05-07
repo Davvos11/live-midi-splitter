@@ -3,8 +3,7 @@ use egui::{Button, ComboBox, DragValue, RichText, Slider, TextStyle, Ui};
 use egui::style::{Selection, Widgets};
 use egui_extras::{Column, TableBuilder};
 
-use crate::backend::common_settings::CommonSettings;
-use crate::backend::output_settings::ChannelMapping;
+use crate::backend::common_settings::{ChannelMapping, CommonSettings};
 use crate::gui::widgets::mapping_settings::filter_value_selector;
 use crate::utils::{midi_to_note, note_to_midi};
 

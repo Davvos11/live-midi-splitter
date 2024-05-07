@@ -1,24 +1,14 @@
 use std::hash::{Hash, Hasher};
+
 use serde::{Deserialize, Serialize};
-use crate::backend::common_settings::CommonSettings;
-use crate::backend::output_settings::OutsideRange::Scale;
+
+use crate::backend::common_settings::{CcMap, ChannelMap, CommonSettings, default_cc_map, default_channel_map, default_filter, VelocityCurve, VelocityRange};
 
 // Serde does not accept default = true, so we make it more stupid to make it work
 fn get_true() -> bool {
     true
 }
 
-pub fn default_filter() -> (u8, u8) { (0, 128) }
-
-pub fn default_cc_map() -> CcMap {
-    // Entry -1 corresponds to "any other cc", and 0 for "any other channel"
-    vec![(0, -1, CcMapping::default())]
-}
-
-pub fn default_channel_map() -> ChannelMap {
-    // Entry 0 for "any other channel"
-    vec![(0, ChannelMapping::default())]
-}
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct OutputSettings {
@@ -122,110 +112,3 @@ impl PartialEq<Self> for OutputSettings {
     }
 }
 
-pub type CcMap = Vec<(u8, i8, CcMapping)>;
-
-#[derive(Serialize, Deserialize, Clone, PartialEq, Eq, Debug, Default)]
-pub enum CcMapping {
-    #[default]
-    PassThrough,
-    PassThroughToChannel(u8),
-    MapToCc(u8),
-    MapToChannelCc(u8, u8),
-    Ignore,
-}
-
-impl CcMapping {
-    pub fn all() -> &'static [CcMapping; 5] {
-        &[CcMapping::PassThrough, CcMapping::Ignore, CcMapping::MapToCc(0), CcMapping::PassThroughToChannel(1), CcMapping::MapToChannelCc(1, 0)]
-    }
-
-    pub fn get_description(&self) -> &'static str {
-        match self {
-            CcMapping::PassThrough => { "Send unmodified" }
-            CcMapping::PassThroughToChannel(_) => { "Send to channel" }
-            CcMapping::MapToCc(_) => { "Send CC" }
-            CcMapping::MapToChannelCc(_, _) => { "Send CC" }
-            CcMapping::Ignore => { "Discard" }
-        }
-    }
-
-    pub fn get_description_with_blanks(&self) -> &'static str {
-        match self {
-            CcMapping::PassThrough => { "Send unmodified" }
-            CcMapping::PassThroughToChannel(_) => { "Send to channel _" }
-            CcMapping::MapToCc(_) => { "Send CC _" }
-            CcMapping::MapToChannelCc(_, _) => { "Send CC _ to channel _" }
-            CcMapping::Ignore => { "Discard" }
-        }
-    }
-}
-
-pub type ChannelMap = Vec<(u8, ChannelMapping)>;
-
-#[derive(Serialize, Deserialize, Clone, PartialEq, Eq, Debug, Default)]
-pub enum ChannelMapping {
-    #[default]
-    PassThrough,
-    Channel(u8),
-    Ignore,
-}
-
-impl ChannelMapping {
-    pub fn all() -> &'static [ChannelMapping; 3] {
-        &[ChannelMapping::PassThrough, ChannelMapping::Channel(1), ChannelMapping::Ignore]
-    }
-
-    pub fn get_description(&self) -> &'static str {
-        match self {
-            ChannelMapping::PassThrough => { "Send unmodified" }
-            ChannelMapping::Channel(_) => { "Send to channel" }
-            ChannelMapping::Ignore => { "Discard" }
-        }
-    }
-
-    pub fn get_description_with_blanks(&self) -> &'static str {
-        match self {
-            ChannelMapping::PassThrough => { "Send unmodified" }
-            ChannelMapping::Channel(_) => { "Send to channel" }
-            ChannelMapping::Ignore => { "Discard" }
-        }
-    }
-}
-
-#[derive(Serialize, Deserialize, Clone, PartialEq, Debug, Default)]
-pub enum VelocityCurve {
-    #[default]
-    Linear,
-    Fixed(u8),
-    Exponential(f64),
-    Logarithmic(f64),
-    SCurve(f64),
-}
-
-
-
-#[derive(Serialize, Deserialize, Clone, PartialEq, Debug)]
-pub struct VelocityRange {
-    pub min: u8,
-    pub max: u8,
-    pub below_min: OutsideRange,
-    pub above_max: OutsideRange,
-}
-
-impl Default for VelocityRange {
-    fn default() -> Self {
-        Self {
-            min: 1,
-            max: 127,
-            below_min: Scale,
-            above_max: Scale,
-        }
-    }
-}
-
-#[derive(Serialize, Deserialize, Clone, PartialEq, Debug)]
-pub enum OutsideRange {
-    Ignore,
-    Clamp,
-    Scale
-}

@@ -1,7 +1,8 @@
 use egui::{RichText, Slider, Ui};
 use egui_plot::{Line, Plot, PlotPoints};
+
+use crate::backend::common_settings::{OutsideRange, VelocityCurve};
 use crate::backend::common_settings::CommonSettings;
-use crate::backend::output_settings::{OutsideRange, VelocityCurve};
 
 pub fn velocity_map_settings(ui: &mut Ui, settings: &mut impl CommonSettings, unique_id: String) {
     let points: PlotPoints = (1..127).map(|x| [x as f64, settings.get_velocity(x as f64)]).filter(|[_, y]| *y > 0.0).collect();

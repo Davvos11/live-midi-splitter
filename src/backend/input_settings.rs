@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
-use crate::backend::common_settings::CommonSettings;
-use crate::backend::output_settings::{CcMap, ChannelMap, default_channel_map, default_cc_map, default_filter, VelocityCurve, VelocityRange};
+
+use crate::backend::common_settings::{CcMap, ChannelMap, CommonSettings, default_cc_map, default_channel_map, default_filter, VelocityCurve, VelocityRange};
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct InputSettings {
