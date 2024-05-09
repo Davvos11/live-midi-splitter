@@ -18,7 +18,7 @@ pub fn create_new_listener(
     properties: Arc<Mutex<Properties>>,
     gui_ctx: Arc<Mutex<Option<Context>>>,
     output_handlers: Arc<Mutex<HashMap<String, Output>>>,
-    event_buffer: Arc<Mutex<HashMap<LiveEvent<'static>, HashSet<String>>>>,
+    event_buffer: Arc<Mutex<HashMap<LiveEvent<'static>, HashSet<EventBufferItem>>>>,
     held_pedals: Arc<Mutex<HashMap<(u4, u7), u7>>>, // (channel, controller): value
 ) -> Result<Input, ConnectError> {
     Input::new(
@@ -126,21 +126,40 @@ pub fn create_new_listener(
                             .connection.send(&data).unwrap_or_else(|_| println!("Failed to send to {}", output.port_name));
                     }
 
+                    // Parse midi data (again, after filter/mapping)
+                    let event_after = LiveEvent::parse(&data);
+                    if let Err(error) = event_after {
+                        eprintln!("Midi parse error: {error}");
+                        return;
+                    }
+                    let event_after = event_after.unwrap();
+
                     // If this is a note-on or pedal event, save it
                     // If this is a note-off or pedal release event, remove previously saved event
                     let mut event_buffer = event_buffer.lock().unwrap();
                     if let LiveEvent::Midi { channel, message } = event {
                         match message {
                             MidiMessage::NoteOn { key, .. } => {
-                                // Save corresponding note off event to listen for
-                                let off_event = LiveEvent::Midi { channel, message: MidiMessage::NoteOff { key, vel: 0.into() } };
-                                event_buffer.entry(off_event).or_default().insert(output.port_name.clone());
+                                // Save corresponding note off event to listen for and to send
+                                let off_listen_event = LiveEvent::Midi { channel, message: MidiMessage::NoteOff { key, vel: 0.into() } };
+                                let off_send_event = {
+                                    if let LiveEvent::Midi { channel, message: MidiMessage::NoteOn {key, ..} } = event_after {
+                                        LiveEvent::Midi { channel, message: MidiMessage::NoteOff { key, vel: 0.into() } }
+                                    } else {
+                                        eprintln!("Event before and after don' t match");
+                                        return;
+                                    }
+                                };
+                                event_buffer.entry(off_listen_event).or_default()
+                                    .insert(EventBufferItem {output_name: output.port_name.clone(), off_event: off_send_event});
                             }
                             MidiMessage::NoteOff { key, .. } => {
                                 // Remove previously saved event (saved on note-on)
                                 let off_event = LiveEvent::Midi { channel, message: MidiMessage::NoteOff { key, vel: 0.into() } };
                                 if let Some(outputs) = event_buffer.get_mut(&off_event) {
-                                    outputs.remove(&output.port_name);
+                                    if let Some(item) = outputs.iter().find(|i|i.output_name == output.port_name).cloned() {
+                                        outputs.remove(&item);
+                                    }
                                 }
                             }
                             MidiMessage::Controller { controller, value } => {
@@ -148,16 +167,27 @@ pub fn create_new_listener(
                                     64 | 66 | 69 => {
                                         if output.buffer_pedals {
                                             if value >= 64 {
-                                                // Save corresponding pedal off event to listen for
-                                                let off_event = LiveEvent::Midi { channel, message: MidiMessage::Controller { controller, value: 0.into() } };
-                                                event_buffer.entry(off_event).or_default().insert(output.port_name.clone());
+                                                // Save corresponding note off event to listen for and to send
+                                                let off_listen_event = LiveEvent::Midi { channel, message: MidiMessage::Controller { controller, value: 0.into() } };
+                                                let off_send_event = {
+                                                    if let LiveEvent::Midi { channel, message: MidiMessage::Controller {controller, ..} } = event_after {
+                                                        LiveEvent::Midi { channel, message: MidiMessage::Controller { controller, value: 0.into() } }
+                                                    } else {
+                                                        eprintln!("Event before and after don' t match");
+                                                        return;
+                                                    }
+                                                };
+                                                event_buffer.entry(off_listen_event).or_default()
+                                                    .insert(EventBufferItem {output_name: output.port_name.clone(), off_event: off_send_event});
                                                 // Mark pedal as held (so it can be sent on preset switch)
                                                 held_pedals.lock().unwrap().insert((channel, controller), value);
                                             } else {
                                                 // Remove previously saved event (saved on note-on)
                                                 let off_event = LiveEvent::Midi { channel, message: MidiMessage::Controller { controller, value: 0.into() } };
                                                 if let Some(outputs) = event_buffer.get_mut(&off_event) {
-                                                    outputs.remove(&output.port_name);
+                                                    if let Some(item) = outputs.iter().find(|i|i.output_name == output.port_name).cloned() {
+                                                        outputs.remove(&item);
+                                                    }
                                                 }
                                             }
                                         }
@@ -202,9 +232,14 @@ pub fn create_new_listener(
                     // Get outputs that need this off event _and_ remove it from the buffer.
                     if let Some(outputs) = event_buffer.remove(&off_event) {
                         // Send to outputs that still need note-off events
-                        outputs.iter().for_each(|output_name| {
-                            output_handlers.get_mut(output_name).unwrap()
-                                .connection.send(&data).unwrap_or_else(|_| println!("Failed to send to {output_name}", ));
+                        outputs.iter().for_each(|item| {
+                            let mut buf = Vec::new();
+                            if let Err(e) = item.off_event.write(&mut buf) {
+                                eprintln!("{e}");
+                            }
+                            output_handlers.get_mut(&item.output_name).unwrap()
+                                .connection.send(&buf)
+                                .unwrap_or_else(|_| println!("Failed to send to {}", &item.output_name));
                         });
                     }
                 }
@@ -213,4 +248,16 @@ pub fn create_new_listener(
             }
         },
     )
+}
+
+#[derive(Eq, Hash, Clone)]
+pub struct EventBufferItem {
+    output_name: String,
+    off_event: LiveEvent<'static>,
+}
+
+impl PartialEq<Self> for EventBufferItem {
+    fn eq(&self, other: &Self) -> bool {
+        self.output_name == other.output_name
+    }
 }

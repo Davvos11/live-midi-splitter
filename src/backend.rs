@@ -9,7 +9,7 @@ use midly::live::LiveEvent;
 use midly::num::{u4, u7};
 
 use crate::backend::device::{Input, new_input, new_output, Output};
-use crate::backend::midi_handler::create_new_listener;
+use crate::backend::midi_handler::{create_new_listener, EventBufferItem};
 use crate::backend::properties::Properties;
 
 pub mod preset;
@@ -26,7 +26,7 @@ pub struct Backend {
 
     input_listeners: Vec<Input>,
     output_handlers: Arc<Mutex<HashMap<String, Output>>>,
-    event_buffer: Arc<Mutex<HashMap<LiveEvent<'static>, HashSet<String>>>>,
+    event_buffer: Arc<Mutex<HashMap<LiveEvent<'static>, HashSet<EventBufferItem>>>>,
     held_pedals: Arc<Mutex<HashMap<(u4, u7), u7>>>, // (channel, controller): value
 }
 
