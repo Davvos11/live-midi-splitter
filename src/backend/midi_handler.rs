@@ -143,7 +143,7 @@ pub fn create_new_listener(
                                 // Save corresponding note off event to listen for and to send
                                 let off_listen_event = LiveEvent::Midi { channel, message: MidiMessage::NoteOff { key, vel: 0.into() } };
                                 let off_send_event = {
-                                    if let LiveEvent::Midi { channel, message: MidiMessage::NoteOn {key, ..} } = event_after {
+                                    if let LiveEvent::Midi { channel, message: MidiMessage::NoteOn { key, .. } } = event_after {
                                         LiveEvent::Midi { channel, message: MidiMessage::NoteOff { key, vel: 0.into() } }
                                     } else {
                                         eprintln!("Event before and after don' t match");
@@ -151,14 +151,17 @@ pub fn create_new_listener(
                                     }
                                 };
                                 event_buffer.entry(off_listen_event).or_default()
-                                    .insert(EventBufferItem {output_name: output.port_name.clone(), off_event: off_send_event});
+                                    .insert(EventBufferItem { output_name: output.port_name.clone(), off_event: off_send_event });
                             }
                             MidiMessage::NoteOff { key, .. } => {
                                 // Remove previously saved event (saved on note-on)
                                 let off_event = LiveEvent::Midi { channel, message: MidiMessage::NoteOff { key, vel: 0.into() } };
                                 if let Some(outputs) = event_buffer.get_mut(&off_event) {
-                                    if let Some(item) = outputs.iter().find(|i|i.output_name == output.port_name).cloned() {
-                                        outputs.remove(&item);
+                                    if let Some(item) = outputs.iter().find(|i| i.output_name == output.port_name).cloned() {
+                                        // Only remove event if it was meant to go to the same output channel as us
+                                        if same_channel(event_after, item.off_event) {
+                                            outputs.remove(&item);
+                                        }
                                     }
                                 }
                             }
@@ -170,7 +173,7 @@ pub fn create_new_listener(
                                                 // Save corresponding note off event to listen for and to send
                                                 let off_listen_event = LiveEvent::Midi { channel, message: MidiMessage::Controller { controller, value: 0.into() } };
                                                 let off_send_event = {
-                                                    if let LiveEvent::Midi { channel, message: MidiMessage::Controller {controller, ..} } = event_after {
+                                                    if let LiveEvent::Midi { channel, message: MidiMessage::Controller { controller, .. } } = event_after {
                                                         LiveEvent::Midi { channel, message: MidiMessage::Controller { controller, value: 0.into() } }
                                                     } else {
                                                         eprintln!("Event before and after don' t match");
@@ -178,15 +181,18 @@ pub fn create_new_listener(
                                                     }
                                                 };
                                                 event_buffer.entry(off_listen_event).or_default()
-                                                    .insert(EventBufferItem {output_name: output.port_name.clone(), off_event: off_send_event});
+                                                    .insert(EventBufferItem { output_name: output.port_name.clone(), off_event: off_send_event });
                                                 // Mark pedal as held (so it can be sent on preset switch)
                                                 held_pedals.lock().unwrap().insert((channel, controller), value);
                                             } else {
                                                 // Remove previously saved event (saved on note-on)
                                                 let off_event = LiveEvent::Midi { channel, message: MidiMessage::Controller { controller, value: 0.into() } };
                                                 if let Some(outputs) = event_buffer.get_mut(&off_event) {
-                                                    if let Some(item) = outputs.iter().find(|i|i.output_name == output.port_name).cloned() {
-                                                        outputs.remove(&item);
+                                                    if let Some(item) = outputs.iter().find(|i| i.output_name == output.port_name).cloned() {
+                                                        // Only remove event if it was meant to go to the same output channel as us
+                                                        if same_channel(event_after, item.off_event) {
+                                                            outputs.remove(&item);
+                                                        }
                                                     }
                                                 }
                                             }
@@ -260,4 +266,13 @@ impl PartialEq<Self> for EventBufferItem {
     fn eq(&self, other: &Self) -> bool {
         self.output_name == other.output_name
     }
+}
+
+fn same_channel(event_a: LiveEvent, event_b: LiveEvent) -> bool {
+    if let LiveEvent::Midi { channel: channel_b, .. } = event_b {
+        if let LiveEvent::Midi { channel: channel_a, .. } = event_a {
+            return channel_b == channel_a;
+        }
+    }
+    false
 }
