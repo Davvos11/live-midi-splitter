@@ -3,7 +3,7 @@ use std::sync::{Arc, Mutex};
 use std::thread;
 
 use eframe::Frame;
-use egui::{Color32, Context, Id, pos2, RichText};
+use egui::Context;
 use egui::panel::{Side, TopBottomSide};
 use egui_dnd::dnd;
 

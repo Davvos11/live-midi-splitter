@@ -9,7 +9,7 @@ use crate::gui::widgets::mapping_settings::mapping_settings;
 
 pub fn preset_tab(ui: &mut Ui, properties: Arc<Mutex<Properties>>, state: Arc<Mutex<State>>, id: usize, tab_state: &mut TabState) {
     let mut properties = properties.lock().unwrap();
-    let mut state = state.lock().unwrap();
+    let state = state.lock().unwrap();
     
     let inputs = properties.inputs.clone();
     let available_outputs = state.available_outputs.clone();

@@ -52,7 +52,7 @@ impl Backend {
         let midi_out = new_output();
         loop {
             {
-                let mut properties = self.properties.lock().unwrap();
+                let properties = self.properties.lock().unwrap();
                 let mut state = self.state.lock().unwrap();
 
                 // Send available ports to frontend

@@ -27,7 +27,7 @@ pub fn create_new_listener(
         name,
         move |_, data, previous_preset| {
             let mut properties = properties.lock().unwrap();
-            let mut state = state.lock().unwrap();
+            let state = state.lock().unwrap();
 
             // Parse midi data
             let event = LiveEvent::parse(data);
@@ -259,17 +259,12 @@ pub fn create_new_listener(
     )
 }
 
-#[derive(Eq, Hash, Clone)]
+#[derive(PartialEq, Eq, Hash, Clone)]
 pub struct EventBufferItem {
     output_name: String,
     off_event: LiveEvent<'static>,
 }
 
-impl PartialEq<Self> for EventBufferItem {
-    fn eq(&self, other: &Self) -> bool {
-        self.output_name == other.output_name
-    }
-}
 
 fn same_channel(event_a: LiveEvent, event_b: LiveEvent) -> bool {
     if let LiveEvent::Midi { channel: channel_b, .. } = event_b {
