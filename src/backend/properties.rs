@@ -1,15 +1,18 @@
 use pro_serde_versioned::{Upgrade, VersionedDeserialize, VersionedSerialize, VersionedUpgrade};
-use serde::{Deserialize, Serialize};
 use regex::{Captures, Regex};
+use serde::{Deserialize, Serialize};
+
 use crate::backend::input_settings::InputSettings;
 use crate::backend::preset::Preset;
 
+#[derive(Default, Clone, Debug)]
+pub struct MidiLearn {
+    pub target: Option<usize>,
+    pub result: Option<Vec<u8>>,
+}
+
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct Properties {
-    #[serde(skip_serializing, default)]
-    pub available_inputs: Vec<String>,
-    #[serde(skip_serializing, default)]
-    pub available_outputs: Vec<String>,
     pub inputs: Vec<InputSettings>,
     pub presets: Vec<Preset>,
     pub current_preset: usize,
@@ -34,7 +37,7 @@ impl Properties {
                     let num: u32 = captures[1].parse().unwrap();
                     format!("({})", num + 1)
                 }).to_string();
-            } else { 
+            } else {
                 preset.name += " (2)";
             }
             self.presets.insert(id + 1, preset);
@@ -48,8 +51,6 @@ impl Properties {
 impl Default for Properties {
     fn default() -> Self {
         Self {
-            available_inputs: Vec::new(),
-            available_outputs: Vec::new(),
             inputs: vec![InputSettings::default()],
             presets: vec![Preset::new_from_id(0)],
             current_preset: 0,
@@ -61,7 +62,7 @@ impl Default for Properties {
 #[derive(VersionedSerialize, VersionedDeserialize, VersionedUpgrade, Clone, Debug)]
 pub enum PropertiesVersioned {
     V1(PropertiesV0_3_0),
-    V2(Properties)
+    V2(Properties),
 }
 
 //////////////////////////////////////////////////////////////////////

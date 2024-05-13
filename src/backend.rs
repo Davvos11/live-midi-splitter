@@ -11,6 +11,7 @@ use midly::num::{u4, u7};
 use crate::backend::device::{Input, new_input, new_output, Output};
 use crate::backend::midi_handler::{create_new_listener, EventBufferItem};
 use crate::backend::properties::Properties;
+use crate::gui::state::State;
 
 pub mod preset;
 pub mod properties;
@@ -22,6 +23,7 @@ pub mod common_settings;
 
 pub struct Backend {
     properties: Arc<Mutex<Properties>>,
+    state: Arc<Mutex<State>>,
     gui_ctx: Arc<Mutex<Option<Context>>>,
 
     input_listeners: Vec<Input>,
@@ -34,6 +36,7 @@ impl Backend {
     pub fn new() -> Self {
         Self {
             properties: Arc::new(Mutex::new(Properties::default())),
+            state: Arc::new(Mutex::new(Default::default())),
             gui_ctx: Arc::new(Mutex::new(None)),
 
             input_listeners: Vec::new(),
@@ -48,53 +51,55 @@ impl Backend {
         let midi_in = new_input();
         let midi_out = new_output();
         loop {
-            let mut properties = self.properties.lock().unwrap();
-            // Send available ports to frontend
-            properties.available_inputs = get_ports(&midi_in);
-            properties.available_outputs = get_ports(&midi_out);
+            {
+                let mut properties = self.properties.lock().unwrap();
+                let mut state = self.state.lock().unwrap();
 
-            // New input factory:
-            let new_listener = |name, input_id| {
-                create_new_listener(
-                    name,
-                    input_id,
-                    Arc::clone(&self.properties),
-                    Arc::clone(&self.gui_ctx),
-                    Arc::clone(&self.output_handlers),
-                    Arc::clone(&self.event_buffer),
-                    Arc::clone(&self.held_pedals),
-                )
-            };
+                // Send available ports to frontend
+                state.available_inputs = get_ports(&midi_in);
+                state.available_outputs = get_ports(&midi_out);
 
-            // Update input listeners
-            properties.inputs.iter()
-                .filter(|s| !s.port_name.is_empty())
-                .enumerate()
-                .for_each(|(i, new_input)| {
-                    if let Some(input) = self.input_listeners.get_mut(i) {
-                        if input.port_name != *new_input.port_name {
-                            // Input setting has changed, change connection
+                // New input factory:
+                let new_listener = |name, input_id| {
+                    create_new_listener(
+                        name,
+                        input_id,
+                        Arc::clone(&self.properties),
+                        Arc::clone(&self.state),
+                        Arc::clone(&self.gui_ctx),
+                        Arc::clone(&self.output_handlers),
+                        Arc::clone(&self.event_buffer),
+                        Arc::clone(&self.held_pedals),
+                    )
+                };
+
+                // Update input listeners
+                properties.inputs.iter()
+                    .filter(|s| !s.port_name.is_empty())
+                    .enumerate()
+                    .for_each(|(i, new_input)| {
+                        if let Some(input) = self.input_listeners.get_mut(i) {
+                            if input.port_name != *new_input.port_name {
+                                // Input setting has changed, change connection
+                                if let Ok(new_input) = new_listener(new_input.port_name.clone(), i) {
+                                    *input = new_input;
+                                }
+                            }
+                        } else {
+                            // New input, add new connection
                             if let Ok(new_input) = new_listener(new_input.port_name.clone(), i) {
-                                *input = new_input;
+                                self.input_listeners.push(new_input);
                             }
                         }
-                    } else {
-                        // New input, add new connection
-                        if let Ok(new_input) = new_listener(new_input.port_name.clone(), i) {
-                            self.input_listeners.push(new_input);
-                        }
-                    }
+                    });
+                // Remove disconnected and removed input listeners
+                self.input_listeners.retain(|input| {
+                    // Remove input listeners that do not exist anymore
+                    state.available_inputs.contains(&input.port_name) &&
+                        // Remove input listeners that are not selected by the user anymore
+                        properties.inputs.iter().filter(|i| i.port_name == input.port_name).count() > 0
                 });
-            // Remove disconnected and removed input listeners
-            self.input_listeners.retain(|input| {
-                // Remove input listeners that do not exist anymore
-                properties.available_inputs.contains(&input.port_name) &&
-                // Remove input listeners that are not selected by the user anymore
-                    properties.inputs.iter().filter(|i|i.port_name == input.port_name).count() > 0
-            });
-
-            drop(properties);
-
+            }
             thread::sleep(Duration::from_millis(100));
         }
     }
@@ -104,8 +109,13 @@ impl Backend {
         Arc::clone(&self.properties)
     }
 
+
     pub fn gui_ctx(&self) -> Arc<Mutex<Option<Context>>> {
         Arc::clone(&self.gui_ctx)
+    }
+    
+    pub fn state(&self) -> Arc<Mutex<State>> {
+        Arc::clone(&self.state)
     }
 }
 

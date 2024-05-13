@@ -9,6 +9,7 @@ use midly::num::{u4, u7};
 use crate::backend::device::{ConnectError, Input, Output};
 use crate::backend::midi_handler::filter_map::apply_filter_map;
 use crate::backend::properties::Properties;
+use crate::gui::state::State;
 
 mod filter_map;
 
@@ -16,6 +17,7 @@ pub fn create_new_listener(
     name: String,
     input_id: usize,
     properties: Arc<Mutex<Properties>>,
+    state: Arc<Mutex<State>>,
     gui_ctx: Arc<Mutex<Option<Context>>>,
     output_handlers: Arc<Mutex<HashMap<String, Output>>>,
     event_buffer: Arc<Mutex<HashMap<LiveEvent<'static>, HashSet<EventBufferItem>>>>,
@@ -25,6 +27,7 @@ pub fn create_new_listener(
         name,
         move |_, data, previous_preset| {
             let mut properties = properties.lock().unwrap();
+            let mut state = state.lock().unwrap();
 
             // Parse midi data
             let event = LiveEvent::parse(data);
@@ -69,7 +72,7 @@ pub fn create_new_listener(
                 // Loop through mappings
                 mapping.iter().for_each(|output| {
                     // Check if the output target has disconnected
-                    if !properties.available_outputs.contains(&output.port_name) {
+                    if !state.available_outputs.contains(&output.port_name) {
                         output_handlers.remove(&output.port_name);
                         return;
                     }
@@ -107,7 +110,7 @@ pub fn create_new_listener(
                     apply_filter_map(&mut data, &mut send, output);
 
                     // Apply global transpose
-                    if properties.transpose != 0 && !ignore_transpose{
+                    if properties.transpose != 0 && !ignore_transpose {
                         if let LiveEvent::Midi { message, .. } = event {
                             match message {
                                 MidiMessage::NoteOff { .. } | MidiMessage::NoteOn { .. } | MidiMessage::Aftertouch { .. } => {

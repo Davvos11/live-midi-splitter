@@ -8,10 +8,10 @@ edition = "2021"
 [dependencies]
 midir = { version = "0.9.1", features = ["jack"] }
 serde = { version = "1", features = ["derive"] }
-egui = "0.24.1"
-egui_extras = "0.24.1"
-egui_plot = "0.24.2"
-eframe = { version = "0.24.1", default-features = false, features = [
+egui = "0.27.2"
+egui_extras = "0.27.2"
+egui_plot = "0.27.2"
+eframe = { version = "0.27.2", default-features = false, features = [
     "default_fonts", # Embed the default egui fonts.
     "glow",          # Use the glow rendering backend. Alternative: "wgpu".
     "persistence",   # Enable restoring app state when restarting the app.
@@ -20,6 +20,9 @@ midly = "0.5.3"
 rfd = "0.12.1"
 serde_json = "1.0.111"
 dirs = "5.0.1"
-egui_dnd = "0.5.1"
+egui_dnd = "0.8.0"
 pro-serde-versioned = "1.0.2"
 regex = "1.10.4"
+egui-phosphor = "0.5.0"
+tracing = "0.1.40"
+tracing-subscriber = { version = "0.3.18", features = ["env-filter"] }

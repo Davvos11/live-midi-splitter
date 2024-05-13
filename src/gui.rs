@@ -3,7 +3,7 @@ use std::sync::{Arc, Mutex};
 use std::thread;
 
 use eframe::Frame;
-use egui::Context;
+use egui::{Color32, Context, Id, pos2, RichText};
 use egui::panel::{Side, TopBottomSide};
 use egui_dnd::dnd;
 
@@ -11,7 +11,7 @@ use crate::backend::Backend;
 use crate::backend::preset::Preset;
 use crate::backend::properties::Properties;
 use crate::gui::data::RecentFiles;
-use crate::gui::state::TabState;
+use crate::gui::state::{State, TabState};
 use crate::gui::tabs::input_settings::input_settings;
 use crate::gui::tabs::preset::preset_tab;
 use crate::gui::tabs::recent_files::recent_files;
@@ -23,10 +23,11 @@ use crate::utils::load;
 pub mod tabs;
 mod widgets;
 pub mod data;
-mod state;
+pub mod state;
 
 pub struct Gui {
     properties: Arc<Mutex<Properties>>,
+    state: Arc<Mutex<State>>,
     ctx_reference: Arc<Mutex<Option<Context>>>,
 
     current_tab: Arc<Mutex<Tab>>,
@@ -41,6 +42,7 @@ impl Default for Gui {
         // Start backend
         let mut backend = Backend::new();
         let properties = backend.properties();
+        let state = backend.state();
         let ctx_reference = backend.gui_ctx();
 
         let _ = thread::spawn(move || backend.run());
@@ -55,6 +57,7 @@ impl Default for Gui {
 
         Self {
             properties,
+            state,
             ctx_reference,
             current_tab: Arc::new(Mutex::default()),
             loading: Arc::new(Mutex::new(false)),
@@ -116,14 +119,14 @@ impl eframe::App for Gui {
                             let tab = Tab::Preset(preset.id);
                             let button = ui.selectable_label(
                                 *current_tab == tab || current_preset == preset.id,
-                                preset.name.clone()
+                                preset.name.clone(),
                             );
                             if button.clicked() {
                                 *current_tab = tab;
                                 // Besides changing the current tab, also change the preset
                                 change_preset_to = Some(preset.id);
                             }
-                            button.context_menu(|ui|{
+                            button.context_menu(|ui| {
                                 if ui.button("Duplicate").clicked() {
                                     duplicate_preset = Some(preset.id);
                                     ui.close_menu();
@@ -177,7 +180,7 @@ impl eframe::App for Gui {
                         recent_files(ui, &self.properties, &self.loading, Arc::clone(&self.recent_files), Arc::clone(&self.current_tab));
                     }
                     Tab::InputSettings => {
-                        input_settings(ui, Arc::clone(&self.properties), &mut self.tab_state);
+                        input_settings(ui, Arc::clone(&self.properties), Arc::clone(&self.state), &mut self.tab_state);
                     }
                     Tab::Preset(id) => {
                         // Handle preset change by backend
@@ -194,7 +197,7 @@ impl eframe::App for Gui {
                             }
                         }
 
-                        preset_tab(ui, Arc::clone(&self.properties), id, &mut self.tab_state)
+                        preset_tab(ui, Arc::clone(&self.properties), Arc::clone(&self.state), id, &mut self.tab_state)
                     }
                 }
             });

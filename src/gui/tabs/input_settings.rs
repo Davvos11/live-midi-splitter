@@ -1,17 +1,20 @@
 use std::sync::{Arc, Mutex};
+
 use eframe::epaint::Rgba;
 use egui::{RichText, Ui};
+
 use crate::backend::input_settings::InputSettings;
 use crate::backend::properties::Properties;
-use crate::gui::state::TabState;
+use crate::gui::state::{State, TabState};
 use crate::gui::widgets::input_settings::input_mapping_settings;
 
-
-pub fn input_settings(ui: &mut Ui, properties: Arc<Mutex<Properties>>, tab_state: &mut TabState) {
+pub fn input_settings(ui: &mut Ui, properties: Arc<Mutex<Properties>>, state: Arc<Mutex<State>>, tab_state: &mut TabState) {
     ui.heading("Input settings");
 
     let mut properties = properties.lock().unwrap();
-    let available_inputs = properties.available_inputs.clone();
+    let mut state = state.lock().unwrap();
+    
+    let available_inputs = state.available_inputs.clone();
     let mut inputs_to_remove = Vec::new();
 
     properties.inputs.iter_mut().enumerate().for_each(|(i, input)| {

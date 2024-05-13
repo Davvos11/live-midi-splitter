@@ -1,15 +1,18 @@
 use std::sync::{Arc, Mutex};
+
 use egui::{Frame, Margin, Rgba, RichText, Rounding, Ui};
+
 use crate::backend::output_settings::OutputSettings;
 use crate::backend::properties::Properties;
-use crate::gui::state::TabState;
+use crate::gui::state::{State, TabState};
 use crate::gui::widgets::mapping_settings::mapping_settings;
 
-
-pub fn preset_tab(ui: &mut Ui, properties: Arc<Mutex<Properties>>, id: usize, tab_state: &mut TabState) {
+pub fn preset_tab(ui: &mut Ui, properties: Arc<Mutex<Properties>>, state: Arc<Mutex<State>>, id: usize, tab_state: &mut TabState) {
     let mut properties = properties.lock().unwrap();
+    let mut state = state.lock().unwrap();
+    
     let inputs = properties.inputs.clone();
-    let available_outputs = properties.available_outputs.clone();
+    let available_outputs = state.available_outputs.clone();
 
     let mut remove_preset = false;
 
@@ -26,7 +29,7 @@ pub fn preset_tab(ui: &mut Ui, properties: Arc<Mutex<Properties>>, id: usize, ta
                 .stroke(ui.visuals().widgets.noninteractive.bg_stroke)
                 .rounding(Rounding::same(5.0))
                 .inner_margin(5.0)
-                .outer_margin(Margin {left: 0.0, right: 0.0, top: 5.0, bottom: 0.0})
+                .outer_margin(Margin { left: 0.0, right: 0.0, top: 5.0, bottom: 0.0 })
                 .show(ui, |ui| {
                     ui.label(&input.port_name);
                     let mapping = preset.mapping.entry(input_id).or_default();
