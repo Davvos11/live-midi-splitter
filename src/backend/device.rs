@@ -1,17 +1,18 @@
 use std::fmt::{Debug, Formatter};
 use midir::{MidiInput, MidiInputConnection, MidiOutput, MidiOutputConnection};
+use crate::backend::MidiPort;
 
 pub struct Input {
-    pub port_name: String,
+    pub port_name: MidiPort,
     pub connection: MidiInputConnection<usize>,
 }
 
 impl Input {
-    pub fn new<F>(port_name: String, callback: F) -> Result<Self, ConnectError>
+    pub fn new<F>(port_name: MidiPort, callback: F) -> Result<Self, ConnectError>
         where F: FnMut(u64, &[u8], &mut usize) + Send + 'static
     {
         let input = new_input();
-        let connection = Self::connect(input, &port_name, callback)?;
+        let connection = Self::connect(input, &port_name.internal, callback)?;
 
         Ok(Self { port_name, connection })
     }
@@ -37,7 +38,7 @@ impl Input {
 
 impl Debug for Input {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "<input {}>", self.port_name)
+        write!(f, "<input {}>", self.port_name.readable)
     }
 }
 

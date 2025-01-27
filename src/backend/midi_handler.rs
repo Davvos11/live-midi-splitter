@@ -8,13 +8,14 @@ use midly::num::{u4, u7};
 
 use crate::backend::device::{ConnectError, Input, Output};
 use crate::backend::midi_handler::filter_map::apply_filter_map;
+use crate::backend::MidiPort;
 use crate::backend::properties::Properties;
 use crate::gui::state::State;
 
 mod filter_map;
 
 pub fn create_new_listener(
-    name: String,
+    name: MidiPort,
     input_id: usize,
     properties: Arc<Mutex<Properties>>,
     state: Arc<Mutex<State>>,
@@ -72,7 +73,7 @@ pub fn create_new_listener(
                 // Loop through mappings
                 mapping.iter().for_each(|output| {
                     // Check if the output target has disconnected
-                    if !state.available_outputs.contains(&output.port_name) {
+                    if !state.available_outputs.iter().any(|p| p.readable == output.port_name) {
                         output_handlers.remove(&output.port_name);
                         return;
                     }

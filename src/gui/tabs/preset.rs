@@ -41,7 +41,7 @@ pub fn preset_tab(ui: &mut Ui, properties: Arc<Mutex<Properties>>, state: Arc<Mu
                                 maps_to_remove.push(map_id);
                             }
                             // Colour red if the selected output is not available (anymore)
-                            let text = if available_outputs.contains(&output.port_name) {
+                            let text = if available_outputs.iter().any(|p| p.readable == output.port_name) {
                                 RichText::new(&output.port_name)
                             } else {
                                 RichText::new(&output.port_name).color(Rgba::from_rgb(1.0, 0.0, 0.0))
@@ -53,7 +53,7 @@ pub fn preset_tab(ui: &mut Ui, properties: Arc<Mutex<Properties>>, state: Arc<Mu
                                 .show_ui(ui, |ui| {
                                     ui.style_mut().wrap = Some(true);
                                     available_outputs.iter().for_each(|output_option| {
-                                        ui.selectable_value(&mut output.port_name, output_option.clone(), output_option);
+                                        ui.selectable_value(&mut output.port_name, output_option.readable.clone(), output_option.readable.clone());
                                     });
                                 });
                         });

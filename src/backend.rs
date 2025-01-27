@@ -7,7 +7,8 @@ use egui::Context;
 use midir::MidiIO;
 use midly::live::LiveEvent;
 use midly::num::{u4, u7};
-
+use once_cell::sync::Lazy;
+use regex::Regex;
 use crate::backend::device::{Input, new_input, new_output, Output};
 use crate::backend::midi_handler::{create_new_listener, EventBufferItem};
 use crate::backend::properties::Properties;
@@ -78,16 +79,19 @@ impl Backend {
                     .filter(|s| !s.port_name.is_empty())
                     .enumerate()
                     .for_each(|(i, new_input)| {
+                        let port = state.available_inputs.iter()
+                            .find(|p| p.readable == new_input.port_name);
+                        
                         if let Some(input) = self.input_listeners.get_mut(i) {
-                            if input.port_name != *new_input.port_name {
+                            if input.port_name.readable != new_input.port_name {
                                 // Input setting has changed, change connection
-                                if let Ok(new_input) = new_listener(new_input.port_name.clone(), i) {
+                                if let Some(Ok(new_input)) = port.map(|p| new_listener(p.clone(), i)) {
                                     *input = new_input;
                                 }
                             }
                         } else {
                             // New input, add new connection
-                            if let Ok(new_input) = new_listener(new_input.port_name.clone(), i) {
+                            if let Some(Ok(new_input)) = port.map(|p| new_listener(p.clone(), i)) {
                                 self.input_listeners.push(new_input);
                             }
                         }
@@ -97,7 +101,7 @@ impl Backend {
                     // Remove input listeners that do not exist anymore
                     state.available_inputs.contains(&input.port_name) &&
                         // Remove input listeners that are not selected by the user anymore
-                        properties.inputs.iter().filter(|i| i.port_name == input.port_name).count() > 0
+                        properties.inputs.iter().any(|i| i.port_name == input.port_name.readable)
                 });
             }
             thread::sleep(Duration::from_millis(100));
@@ -113,16 +117,45 @@ impl Backend {
     pub fn gui_ctx(&self) -> Arc<Mutex<Option<Context>>> {
         Arc::clone(&self.gui_ctx)
     }
-    
+
     pub fn state(&self) -> Arc<Mutex<State>> {
         Arc::clone(&self.state)
     }
 }
 
-fn get_ports<T: MidiIO>(midi_io: &T) -> Vec<String> {
+fn get_ports<T: MidiIO>(midi_io: &T) -> Vec<MidiPort> {
     midi_io.ports().iter()
         .map(|p| midi_io.port_name(p).unwrap_or("Cannot get port name".to_string()))
-        .filter(|p| !p.starts_with("testLive Midi Splitter"))
+        .map(parse_port)
         .collect()
 }
 
+#[derive(Clone, Debug)]
+#[derive(PartialEq)]
+pub struct MidiPort {
+    pub readable: String,
+    pub internal: String,
+}
+
+impl MidiPort {
+    fn new(readable: String, internal: String) -> Self {
+        Self { readable, internal }
+    }
+    
+    fn new_simple(internal: String) -> Self {
+        Self {readable: internal.clone(), internal}
+    }
+}
+
+/// Helper to get more usable device names (i.e. for Midi-Bridge)
+fn parse_port(port_name: String) -> MidiPort {
+    static RE: Lazy<Regex> = Lazy::new(|| Regex::new(r"\((playback|capture)_\d+\) (.+)$").unwrap());
+    if port_name.starts_with("Midi-Bridge:") {
+        if let Some(groups) = RE.captures(&port_name) {
+            if let Some(name) = groups.get(2) {
+                return MidiPort::new(name.as_str().to_string(), port_name);
+            }
+        }
+    }
+    MidiPort::new_simple(port_name)
+}

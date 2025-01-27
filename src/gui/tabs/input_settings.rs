@@ -25,7 +25,7 @@ pub fn input_settings(ui: &mut Ui, properties: Arc<Mutex<Properties>>, state: Ar
             ui.label(format!("Input {}:", i + 1));
         });
         // Colour red if the selected input is not available (anymore)
-        let text = if available_inputs.contains(&input.port_name) {
+        let text = if available_inputs.iter().any(|p| p.readable == input.port_name) {
             RichText::new(&input.port_name)
         } else {
             RichText::new(&input.port_name).color(Rgba::from_rgb(1.0,0.0,0.0))
@@ -37,7 +37,8 @@ pub fn input_settings(ui: &mut Ui, properties: Arc<Mutex<Properties>>, state: Ar
             .show_ui(ui, |ui| {
                 ui.style_mut().wrap = Some(true);
                 available_inputs.iter().for_each(|input_option| {
-                    ui.selectable_value(&mut input.port_name, input_option.clone(), input_option);
+                    let name = &input_option.readable;
+                    ui.selectable_value(&mut input.port_name, name.clone(), name);
                 });
             });
 
