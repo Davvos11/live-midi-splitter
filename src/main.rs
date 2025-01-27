@@ -24,7 +24,7 @@ fn main() {
     };
 
     let filter = EnvFilter::try_from_default_env()
-        .or_else(|_| EnvFilter::try_new("debug"))
+        .or_else(|_| EnvFilter::try_new("info"))
         .unwrap();
 
     tracing_subscriber::fmt()
