@@ -14,6 +14,7 @@ use crate::gui::data::RecentFiles;
 use crate::gui::state::{State, TabState};
 use crate::gui::tabs::input_settings::input_settings;
 use crate::gui::tabs::preset::preset_tab;
+use crate::gui::tabs::quick_start::quick_start;
 use crate::gui::tabs::recent_files::recent_files;
 use crate::gui::tabs::Tab;
 use crate::gui::widgets::save_load::save_load;
@@ -108,6 +109,7 @@ impl eframe::App for Gui {
 
                     ui.selectable_value(&mut *current_tab, Tab::RecentFiles, "Recent files");
                     ui.selectable_value(&mut *current_tab, Tab::InputSettings, "Input settings");
+                    ui.selectable_value(&mut *current_tab, Tab::QuickStart, "Quick start");
                     ui.separator();
                     ui.label("Presets:");
 
@@ -178,6 +180,9 @@ impl eframe::App for Gui {
                 match *current_tab {
                     Tab::RecentFiles => {
                         recent_files(ui, &self.properties, &self.loading, Arc::clone(&self.recent_files), Arc::clone(&self.current_tab));
+                    }
+                    Tab::QuickStart => {
+                        quick_start(ui, ctx, &self.properties, &self.loading);
                     }
                     Tab::InputSettings => {
                         input_settings(ui, Arc::clone(&self.properties), Arc::clone(&self.state), &mut self.tab_state);

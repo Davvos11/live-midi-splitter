@@ -62,7 +62,7 @@ pub fn load(location: &PathBuf, properties: Arc<Mutex<Properties>>, current_tab:
             }
         };
 
-        *current_tab.lock().unwrap() = Tab::Preset(properties.lock().unwrap().current_preset);
+        *current_tab.lock().unwrap() = Tab::QuickStart;
         // TODO refresh view
         return true;
     }

@@ -1,3 +1,4 @@
+use std::path::PathBuf;
 use pro_serde_versioned::{Upgrade, VersionedDeserialize, VersionedSerialize, VersionedUpgrade};
 use regex::{Captures, Regex};
 use serde::{Deserialize, Serialize};
@@ -18,6 +19,8 @@ pub struct Properties {
     pub current_preset: usize,
     #[serde(default)]
     pub transpose: i8,
+    #[serde(default)]
+    pub shortcuts: Vec<String>,
 }
 
 impl Properties {
@@ -55,6 +58,7 @@ impl Default for Properties {
             presets: vec![Preset::new_from_id(0)],
             current_preset: 0,
             transpose: 0,
+            shortcuts: vec![],
         }
     }
 }
