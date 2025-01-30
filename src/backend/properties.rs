@@ -1,4 +1,3 @@
-use std::path::PathBuf;
 use pro_serde_versioned::{Upgrade, VersionedDeserialize, VersionedSerialize, VersionedUpgrade};
 use regex::{Captures, Regex};
 use serde::{Deserialize, Serialize};

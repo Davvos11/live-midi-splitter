@@ -55,7 +55,6 @@ impl Default for Gui {
             *recent_files.lock().unwrap() = data;
         }
 
-
         Self {
             properties,
             state,
@@ -81,9 +80,11 @@ impl Gui {
 
 impl eframe::App for Gui {
     fn update(&mut self, ctx: &Context, _frame: &mut Frame) {
-        let mut ctx_reference = self.ctx_reference.lock().unwrap();
-        if ctx_reference.is_none() {
-            *ctx_reference = Some(ctx.clone());
+        {
+            let mut ctx_reference = self.ctx_reference.lock().unwrap();
+            if ctx_reference.is_none() {
+                *ctx_reference = Some(ctx.clone());
+            }
         }
 
         let mut change_preset_to = None;
@@ -182,7 +183,7 @@ impl eframe::App for Gui {
                         recent_files(ui, &self.properties, &self.loading, Arc::clone(&self.recent_files), Arc::clone(&self.current_tab));
                     }
                     Tab::QuickStart => {
-                        quick_start(ui, ctx, &self.properties, &self.loading);
+                        quick_start(ui, ctx, &self.properties, &self.loading, &self.state);
                     }
                     Tab::InputSettings => {
                         input_settings(ui, Arc::clone(&self.properties), Arc::clone(&self.state), &mut self.tab_state);

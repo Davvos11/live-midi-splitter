@@ -1,18 +1,19 @@
 use std::collections::{HashMap, HashSet};
+use std::ops::Deref;
 use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::Duration;
 
+use crate::backend::device::{new_input, new_output, Input, Output};
+use crate::backend::midi_handler::{create_new_listener, EventBufferItem};
+use crate::backend::properties::Properties;
+use crate::gui::state::State;
 use egui::Context;
 use midir::MidiIO;
 use midly::live::LiveEvent;
 use midly::num::{u4, u7};
 use once_cell::sync::Lazy;
 use regex::Regex;
-use crate::backend::device::{Input, new_input, new_output, Output};
-use crate::backend::midi_handler::{create_new_listener, EventBufferItem};
-use crate::backend::properties::Properties;
-use crate::gui::state::State;
 
 pub mod preset;
 pub mod properties;
@@ -21,6 +22,7 @@ pub mod midi_handler;
 mod device;
 pub mod output_settings;
 pub mod common_settings;
+pub mod pipewire_utils;
 
 pub struct Backend {
     properties: Arc<Mutex<Properties>>,
@@ -37,7 +39,7 @@ impl Backend {
     pub fn new() -> Self {
         Self {
             properties: Arc::new(Mutex::new(Properties::default())),
-            state: Arc::new(Mutex::new(Default::default())),
+            state: Arc::new(Mutex::new(State::new())),
             gui_ctx: Arc::new(Mutex::new(None)),
 
             input_listeners: Vec::new(),
@@ -73,6 +75,23 @@ impl Backend {
                         Arc::clone(&self.held_pedals),
                     )
                 };
+                // Update Pipewire info
+                if let Some(pipewire) = &mut state.pipewire_status {
+                    match pipewire.update() {
+                        Err(err) => {
+                            state.pipewire_error = Some(err.to_string());
+                        }
+                        Ok(updated) => {
+                            state.pipewire_error = None;
+                            if updated {
+                                let ctx = self.gui_ctx.lock().unwrap();
+                                if let Some(ctx) = ctx.deref() {
+                                    ctx.request_repaint();
+                                }
+                            }
+                        }
+                    }
+                }
 
                 // Update input listeners
                 properties.inputs.iter()
@@ -121,6 +140,7 @@ impl Backend {
     pub fn state(&self) -> Arc<Mutex<State>> {
         Arc::clone(&self.state)
     }
+    
 }
 
 fn get_ports<T: MidiIO>(midi_io: &T) -> Vec<MidiPort> {
