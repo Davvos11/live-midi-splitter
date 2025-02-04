@@ -73,15 +73,17 @@ pub fn create_new_listener(
                 // Loop through mappings
                 mapping.iter().for_each(|output| {
                     // Check if the output target has disconnected
-                    if !state.available_outputs.iter().any(|p| p.readable == output.port_name) {
+                    let output_port =  state.available_outputs.iter().find(|p| p.readable == output.port_name); 
+                    if output_port.is_none() {
                         output_handlers.remove(&output.port_name);
                         return;
                     }
+                    let output_port = output_port.unwrap(); // safe because of if above
 
                     // Find output_handler or create new
                     if !output_handlers.contains_key(&output.port_name) {
                         // Try to connect
-                        let new_handler = Output::new(&output.port_name);
+                        let new_handler = Output::new(&output_port);
                         match new_handler {
                             Ok(handler) => {
                                 output_handlers.insert(output.port_name.clone(), handler);

@@ -47,9 +47,9 @@ pub struct Output {
 }
 
 impl Output {
-    pub fn new(port_name: &String) -> Result<Self, ConnectError> {
+    pub fn new(port_name: &MidiPort) -> Result<Self, ConnectError> {
         let output = new_output();
-        let connection = Self::connect(output, port_name)?;
+        let connection = Self::connect(output, &port_name.internal)?;
 
         Ok(Self { connection })
     }
