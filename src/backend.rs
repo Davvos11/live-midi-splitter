@@ -53,8 +53,10 @@ impl Backend {
         // TODO error to frontend (new_input uses unwrap)
         let midi_in = new_input();
         let midi_out = new_output();
+        let mut i = 0;
         loop {
             {
+                i += 1;
                 let properties = self.properties.lock().unwrap();
                 let mut state = self.state.lock().unwrap();
 
@@ -75,22 +77,26 @@ impl Backend {
                         Arc::clone(&self.held_pedals),
                     )
                 };
-                // Update Pipewire info
-                if let Some(pipewire) = &mut state.pipewire_status {
-                    match pipewire.update() {
-                        Err(err) => {
-                            state.pipewire_error = Some(err.to_string());
-                        }
-                        Ok(updated) => {
-                            state.pipewire_error = None;
-                            if updated {
-                                let ctx = self.gui_ctx.lock().unwrap();
-                                if let Some(ctx) = ctx.deref() {
-                                    ctx.request_repaint();
+                // Update Pipewire info (not every loop, to save expensive calls)
+                // TODO this should really be on another thread
+                if i >= 1000 {
+                    if let Some(pipewire) = &mut state.pipewire_status {
+                        match pipewire.update() {
+                            Err(err) => {
+                                state.pipewire_error = Some(err.to_string());
+                            }
+                            Ok(updated) => {
+                                state.pipewire_error = None;
+                                if updated {
+                                    let ctx = self.gui_ctx.lock().unwrap();
+                                    if let Some(ctx) = ctx.deref() {
+                                        ctx.request_repaint();
+                                    }
                                 }
                             }
                         }
                     }
+                    i = 0;
                 }
 
                 // Update input listeners
