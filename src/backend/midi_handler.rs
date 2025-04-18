@@ -60,9 +60,6 @@ impl Listener {
                     eprintln!("Could not get input settings for input {}", self.input_id)
                 }
 
-                // Make mutable copy of data
-                let mut data = data.to_vec();
-
                 let mut output_handlers = self.output_handlers.lock().unwrap();
                 // Get preset
                 let preset = properties.presets.get(properties.current_preset);
@@ -75,8 +72,10 @@ impl Listener {
 
                     // Loop through mappings
                     mapping.iter().for_each(|output| {
+                        // Clone data so we can modify it separately for each output mapping
+                        let mut data = data.to_owned();
                         // Check if the output target has disconnected
-                        let output_port =  state.available_outputs.iter().find(|p| p.readable == output.port_name); 
+                        let output_port =  state.available_outputs.iter().find(|p| p.readable == output.port_name);
                         if output_port.is_none() {
                             output_handlers.remove(&output.port_name);
                             return;
@@ -108,7 +107,6 @@ impl Listener {
                         }
 
                         let mut send = true;
-                        // TODO borken????
                         let mut ignore_transpose = output.transpose.ignore_global;
                         if let Some(input_settings) = properties.inputs.get(self.input_id) {
                             apply_filter_map(&mut data, &mut send, input_settings);

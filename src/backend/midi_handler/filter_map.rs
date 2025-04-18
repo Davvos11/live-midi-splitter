@@ -13,7 +13,7 @@ pub fn apply_filter_map(data: &mut [u8], send: &mut bool, settings: &impl Common
             return;
         }
         let event = event.unwrap();
-        
+
         if let LiveEvent::Midi { channel, message } = event {
             match message {
                 MidiMessage::NoteOn { key, vel } | MidiMessage::NoteOff { key, vel } => {
@@ -22,13 +22,13 @@ pub fn apply_filter_map(data: &mut [u8], send: &mut bool, settings: &impl Common
                         (settings.key_filter().0 > key || settings.key_filter().1 < key) {
                         *send = false;
                     }
-                    
+
                     // Apply key transpose
                     if settings.transpose().value != 0 {
                         // Change raw data directly. data[1] is the key value. set to 0 at underflow
                         data[1] = data[1].checked_add_signed(settings.transpose().value).unwrap_or(0);
                     }
-                    
+
                     // Apply channel filter / map
                     let channel_map = settings.channel_map().iter().find(|(ch, _)| *ch == channel.as_int() + 1)
                         .or(settings.channel_map().last());
@@ -44,7 +44,7 @@ pub fn apply_filter_map(data: &mut [u8], send: &mut bool, settings: &impl Common
                             ChannelMapping::Ignore => { *send = false }
                         }
                     }
-                    
+
                     // Apply velocity filter / curve
                     if vel != 0 {
                         let x = settings.get_velocity(vel.as_int() as f64);
@@ -83,4 +83,4 @@ pub fn apply_filter_map(data: &mut [u8], send: &mut bool, settings: &impl Common
             }
         }
     }
-} 
+}
