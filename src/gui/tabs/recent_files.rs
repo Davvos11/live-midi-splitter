@@ -3,6 +3,7 @@ use std::thread;
 use egui::{RichText, TextStyle, Ui};
 use crate::backend::properties::Properties;
 use crate::gui::data::RecentFiles;
+use crate::gui::state::State;
 use crate::gui::tabs::Tab;
 use crate::utils::load;
 
@@ -11,6 +12,7 @@ pub fn recent_files(ui: &mut Ui,
                     loading: &Arc<Mutex<bool>>,
                     recent_files: Arc<Mutex<RecentFiles>>,
                     current_tab: Arc<Mutex<Tab>>,
+                    state: &Arc<Mutex<State>>,
 ) {
     ui.heading("Recent:");
 
@@ -26,10 +28,13 @@ pub fn recent_files(ui: &mut Ui,
                 let location = file.clone();
                 let recent_files = Arc::clone(&recent_files);
                 let current_tab = Arc::clone(&current_tab);
+                let state = Arc::clone(state);
+                let file = file.clone();
                 let _ = thread::spawn(move || {
                     *loading.lock().unwrap() = true;
                     let mut recent_files = recent_files.lock().unwrap();
                     if load(&location, properties, current_tab) {
+                        state.lock().unwrap().file_path = Some(file);
                         recent_files.add(location);
                     } else {
                         recent_files.remove(&location);

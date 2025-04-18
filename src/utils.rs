@@ -17,19 +17,25 @@ pub fn save_dialog(properties: Arc<Mutex<Properties>>) -> Option<PathBuf> {
         if location.extension().is_none() {
             location.set_extension("lmsc");
         }
-        let Ok(file) = File::create(&location) else {
-            return None;
-        };
-        let properties = properties.lock().unwrap();
-        let versioned: PropertiesVersioned = properties.to_owned().into();
-        let serialised: serde_json::Value = versioned.versioned_serialize().unwrap();
-        if serde_json::to_writer_pretty(file, &serialised).is_ok() {
+        if save(&location, properties) {
             return Some(location);
         }
     }
     None
 }
 
+pub fn save(location: &PathBuf, properties: Arc<Mutex<Properties>>) -> bool {
+    let Ok(file) = File::create(location) else {
+        return false;
+    };
+    let properties = properties.lock().unwrap();
+    let versioned: PropertiesVersioned = properties.to_owned().into();
+    let serialised: serde_json::Value = versioned.versioned_serialize().unwrap();
+    if serde_json::to_writer_pretty(file, &serialised).is_ok() {
+        return true;
+    }
+    false
+}
 
 pub fn load_dialog(properties: Arc<Mutex<Properties>>, current_tab: Arc<Mutex<Tab>>) -> Option<PathBuf> {
     // TODO error handling

@@ -76,6 +76,7 @@ impl Gui {
         let gui = Gui::default();
         let path = PathBuf::from(path);
         load(&path, Arc::clone(&gui.properties), Arc::clone(&gui.current_tab));
+        gui.state.lock().unwrap().file_path = Some(path.clone());
         gui.recent_files.lock().unwrap().add(path);
 
         gui
@@ -99,7 +100,7 @@ impl eframe::App for Gui {
             egui::Grid::new("header-grid")
                 .show(ui, |ui| {
                     ui.heading("Live MIDI splitter");
-                    save_load(ui, &self.properties, &self.loading, &self.recent_files, Arc::clone(&self.current_tab));
+                    save_load(ui, &self.properties, &self.loading, &self.recent_files, Arc::clone(&self.current_tab), &self.state);
                     let mut properties = self.properties.lock().unwrap();
                     transpose(ui, &mut properties.transpose);
                     ui.end_row();
@@ -184,7 +185,7 @@ impl eframe::App for Gui {
                 let mut current_tab = self.current_tab.lock().unwrap();
                 match *current_tab {
                     Tab::RecentFiles => {
-                        recent_files(ui, &self.properties, &self.loading, Arc::clone(&self.recent_files), Arc::clone(&self.current_tab));
+                        recent_files(ui, &self.properties, &self.loading, Arc::clone(&self.recent_files), Arc::clone(&self.current_tab), &self.state);
                     }
                     Tab::QuickStart => {
                         quick_start(ui, ctx, &self.properties, &self.loading, &self.state);

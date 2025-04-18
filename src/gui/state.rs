@@ -3,7 +3,7 @@ use crate::backend::properties::MidiLearn;
 use crate::backend::MidiPort;
 use crate::gui::widgets::input_settings::InputTab;
 use std::collections::HashMap;
-
+use std::path::PathBuf;
 use crate::gui::widgets::mapping_settings::OutputTab;
 
 #[derive(Default, Clone, Debug)]
@@ -13,6 +13,7 @@ pub struct State {
     pub pipewire_status: Option<Pipewire>,
     pub pipewire_error: Option<String>,
     pub midi_learn: MidiLearn,
+    pub file_path: Option<PathBuf>,
 }
 
 impl State {
