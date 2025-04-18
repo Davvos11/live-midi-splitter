@@ -8,6 +8,7 @@ use egui::panel::{Side, TopBottomSide};
 use egui_dnd::dnd;
 
 use crate::backend::Backend;
+use crate::backend::background_functions::run_background_functions;
 use crate::backend::preset::Preset;
 use crate::backend::properties::Properties;
 use crate::gui::data::RecentFiles;
@@ -47,6 +48,9 @@ impl Default for Gui {
         let ctx_reference = backend.gui_ctx();
 
         let _ = thread::spawn(move || backend.run());
+        let bg_state = Arc::clone(&state);
+        let bg_ctx = Arc::clone(&ctx_reference);
+        let _ = thread::spawn(move || run_background_functions(bg_state, bg_ctx));
 
         // Load recent files
         let recent_files = Arc::new(Mutex::new(RecentFiles::default()));

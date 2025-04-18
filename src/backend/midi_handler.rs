@@ -105,6 +105,7 @@ pub fn create_new_listener(
                     }
 
                     let mut send = true;
+                    // TODO borken????
                     let mut ignore_transpose = output.transpose.ignore_global;
                     if let Some(input_settings) = properties.inputs.get(input_id) {
                         apply_filter_map(&mut data, &mut send, input_settings);
