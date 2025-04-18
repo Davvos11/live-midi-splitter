@@ -662,6 +662,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "egui-keybind"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8722f0b3ca6f071400058f105ef6c6a14a897fe6e25a79ba2cd9aea31852a74c"
+dependencies = [
+ "egui",
+]
+
+[[package]]
 name = "egui-modal"
 version = "0.3.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1337,6 +1346,7 @@ dependencies = [
  "dirs",
  "eframe",
  "egui",
+ "egui-keybind",
  "egui-modal",
  "egui-phosphor",
  "egui_dnd",

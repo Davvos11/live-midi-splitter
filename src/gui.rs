@@ -3,22 +3,23 @@ use std::sync::{Arc, Mutex};
 use std::thread;
 
 use eframe::Frame;
-use egui::Context;
+use egui::{Context, Key, KeyboardShortcut, Modifiers};
 use egui::panel::{Side, TopBottomSide};
 use egui_dnd::dnd;
-
+use egui_keybind::{Bind, Shortcut};
 use crate::backend::Backend;
 use crate::backend::background_functions::run_background_functions;
 use crate::backend::preset::Preset;
 use crate::backend::properties::Properties;
 use crate::gui::data::RecentFiles;
+use crate::gui::keybinds::Keybinds;
 use crate::gui::state::{State, TabState};
 use crate::gui::tabs::input_settings::input_settings;
 use crate::gui::tabs::preset::preset_tab;
 use crate::gui::tabs::quick_start::quick_start;
 use crate::gui::tabs::recent_files::recent_files;
 use crate::gui::tabs::Tab;
-use crate::gui::widgets::save_load::save_load;
+use crate::gui::widgets::save_load::{gui_load, gui_save, gui_save_as, save_load};
 use crate::gui::widgets::transpose::transpose;
 use crate::utils::load;
 
@@ -26,6 +27,7 @@ pub mod tabs;
 mod widgets;
 pub mod data;
 pub mod state;
+mod keybinds;
 
 pub struct Gui {
     properties: Arc<Mutex<Properties>>,
@@ -35,6 +37,7 @@ pub struct Gui {
     current_tab: Arc<Mutex<Tab>>,
     tab_state: TabState,
     loading: Arc<Mutex<bool>>,
+    keybinds: Keybinds,
 
     recent_files: Arc<Mutex<RecentFiles>>,
 }
@@ -65,6 +68,8 @@ impl Default for Gui {
             ctx_reference,
             current_tab: Arc::new(Mutex::default()),
             loading: Arc::new(Mutex::new(false)),
+            // TODO make keybinds configurable
+            keybinds: Keybinds::default(),
             recent_files,
             tab_state: TabState::default(),
         }
@@ -96,11 +101,28 @@ impl eframe::App for Gui {
         let mut delete_preset = None;
         let mut duplicate_preset = None;
 
+        // Handle keybinds
+        if ctx.input_mut(|i| self.keybinds.load.pressed(i)) {
+            gui_load(&self.properties, &self.loading, &self.recent_files, &self.current_tab, &self.state);
+        }
+        if ctx.input_mut(|i| self.keybinds.save_as.pressed(i)) {
+            gui_save_as(&self.properties, &self.loading, &self.recent_files, &self.state);
+        }
+        if ctx.input_mut(|i| self.keybinds.save.pressed(i)) {
+            if let Some(filename) = self.state.lock().unwrap().file_path.clone() {
+                gui_save(filename, &self.properties, &self.loading);
+            } else {
+                gui_save_as(&self.properties, &self.loading, &self.recent_files, &self.state);
+            }
+        }
+        
+        // Draw UI
+        
         egui::TopBottomPanel::new(TopBottomSide::Top, "header").show(ctx, |ui| {
             egui::Grid::new("header-grid")
                 .show(ui, |ui| {
                     ui.heading("Live MIDI splitter");
-                    save_load(ui, &self.properties, &self.loading, &self.recent_files, Arc::clone(&self.current_tab), &self.state);
+                    save_load(ui, &self.properties, &self.loading, &self.recent_files, &self.current_tab, &self.state);
                     let mut properties = self.properties.lock().unwrap();
                     transpose(ui, &mut properties.transpose);
                     ui.end_row();
