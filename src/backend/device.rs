@@ -1,9 +1,10 @@
-use std::fmt::{Debug, Formatter};
-use midir::{MidiInput, MidiInputConnection, MidiOutput, MidiOutputConnection};
 use crate::backend::MidiPort;
+use midir::{MidiInput, MidiInputConnection, MidiOutput, MidiOutputConnection};
+use std::fmt::{Debug, Formatter};
 
 pub struct Input {
     pub port_name: MidiPort,
+    #[allow(dead_code)] // TODO: do we ever want to use this?
     pub connection: MidiInputConnection<usize>,
 }
 

@@ -4,7 +4,7 @@ use std::thread;
 use std::time::Duration;
 
 use crate::backend::device::{new_input, new_output, Input, Output};
-use crate::backend::midi_handler::{create_new_listener, EventBufferItem};
+use crate::backend::midi_handler::{EventBufferItem, Listener};
 use crate::backend::properties::Properties;
 use crate::gui::state::State;
 use egui::Context;
@@ -64,16 +64,16 @@ impl Backend {
 
                 // New input factory:
                 let new_listener = |name, input_id| {
-                    create_new_listener(
+                    Listener {
                         name,
                         input_id,
-                        Arc::clone(&self.properties),
-                        Arc::clone(&self.state),
-                        Arc::clone(&self.gui_ctx),
-                        Arc::clone(&self.output_handlers),
-                        Arc::clone(&self.event_buffer),
-                        Arc::clone(&self.held_pedals),
-                    )
+                        properties: Arc::clone(&self.properties),
+                        state: Arc::clone(&self.state),
+                        gui_ctx: Arc::clone(&self.gui_ctx),
+                        output_handlers: Arc::clone(&self.output_handlers),
+                        event_buffer: Arc::clone(&self.event_buffer),
+                        held_pedals: Arc::clone(&self.held_pedals),
+                    }.create()
                 };
 
                 // Update input listeners
