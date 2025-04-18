@@ -16,7 +16,7 @@ use crate::gui::tabs::recent_files::recent_files;
 use crate::gui::tabs::Tab;
 use crate::gui::widgets::save_load::{gui_load, gui_save, gui_save_as, save_load};
 use crate::gui::widgets::transpose::transpose;
-use crate::utils::load;
+use crate::utils::{load, shorten_str};
 use eframe::Frame;
 use egui::panel::{Side, TopBottomSide};
 use egui::Context;
@@ -115,13 +115,19 @@ impl eframe::App for Gui {
                 gui_save_as(&self.properties, &self.loading, &self.recent_files, &self.state);
             }
         }
-        
+
         // Draw UI
-        
+
         egui::TopBottomPanel::new(TopBottomSide::Top, "header").show(ctx, |ui| {
             egui::Grid::new("header-grid")
                 .show(ui, |ui| {
                     ui.heading("Live MIDI splitter");
+                    if let Some(path) = &self.state.lock().unwrap().file_path {
+                        let file_name = path.file_name()
+                            .map(|x| x.to_string_lossy())
+                            .unwrap_or_default();
+                        ui.label(shorten_str(&file_name, 20)).on_hover_text(file_name);
+                    }
                     save_load(ui, &self.properties, &self.loading, &self.recent_files, &self.current_tab, &self.state, &self.keybinds);
                     let mut properties = self.properties.lock().unwrap();
                     transpose(ui, &mut properties.transpose);

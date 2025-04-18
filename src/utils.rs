@@ -100,3 +100,12 @@ pub fn note_to_midi(string: &str) -> Option<f64> {
 
     Some(((octave + 1) * 12 + note_index as i8) as f64)
 }
+
+pub fn shorten_str(input: &str, max_len: usize) -> String {
+    let max_len = max_len - 3;
+    if input.len() > max_len {
+        format!("{}...", &input[..max_len])
+    } else {
+        input.into()
+    }
+}
