@@ -2,15 +2,10 @@ use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 use std::thread;
 
-use eframe::Frame;
-use egui::{Context, Key, KeyboardShortcut, Modifiers};
-use egui::panel::{Side, TopBottomSide};
-use egui_dnd::dnd;
-use egui_keybind::{Bind, Shortcut};
-use crate::backend::Backend;
 use crate::backend::background_functions::run_background_functions;
 use crate::backend::preset::Preset;
 use crate::backend::properties::Properties;
+use crate::backend::Backend;
 use crate::gui::data::RecentFiles;
 use crate::gui::keybinds::Keybinds;
 use crate::gui::state::{State, TabState};
@@ -22,6 +17,11 @@ use crate::gui::tabs::Tab;
 use crate::gui::widgets::save_load::{gui_load, gui_save, gui_save_as, save_load};
 use crate::gui::widgets::transpose::transpose;
 use crate::utils::load;
+use eframe::Frame;
+use egui::panel::{Side, TopBottomSide};
+use egui::Context;
+use egui_dnd::dnd;
+use egui_keybind::Bind;
 
 pub mod tabs;
 mod widgets;
@@ -122,7 +122,7 @@ impl eframe::App for Gui {
             egui::Grid::new("header-grid")
                 .show(ui, |ui| {
                     ui.heading("Live MIDI splitter");
-                    save_load(ui, &self.properties, &self.loading, &self.recent_files, &self.current_tab, &self.state);
+                    save_load(ui, &self.properties, &self.loading, &self.recent_files, &self.current_tab, &self.state, &self.keybinds);
                     let mut properties = self.properties.lock().unwrap();
                     transpose(ui, &mut properties.transpose);
                     ui.end_row();

@@ -1,5 +1,5 @@
-use egui::{Key, KeyboardShortcut, Modifiers};
-use egui_keybind::Shortcut;
+use egui::{Key, KeyboardShortcut, ModifierNames, Modifiers, Response, Ui, WidgetText};
+use egui_keybind::{Bind, Shortcut};
 
 pub struct Keybinds {
     pub load: Shortcut,
@@ -19,4 +19,8 @@ impl Default for Keybinds {
 
 fn keyboard_shortcut(modifiers: Modifiers, logical_key: Key) -> Shortcut {
     Shortcut::new(Some(KeyboardShortcut::new(modifiers, logical_key)), None)
+}
+
+pub fn keybind_button(ui: &mut Ui, text: impl Into<WidgetText>, shortcut: &Shortcut) -> Response {
+    ui.button(text).on_hover_text(shortcut.format(&ModifierNames::NAMES, false))
 }

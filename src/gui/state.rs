@@ -14,6 +14,7 @@ pub struct State {
     pub pipewire_error: Option<String>,
     pub midi_learn: MidiLearn,
     pub file_path: Option<PathBuf>,
+    pub file_changed: bool,
 }
 
 impl State {
