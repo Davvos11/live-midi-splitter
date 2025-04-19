@@ -1,16 +1,16 @@
 use std::collections::{HashMap, HashSet};
-use std::ops::Deref;
 use std::sync::{Arc, Mutex};
 
 use egui::Context;
-use midly::{live::LiveEvent, MidiMessage};
 use midly::num::{u4, u7};
+use midly::{live::LiveEvent, MidiMessage};
 
 use crate::backend::device::{ConnectError, Input, Output};
 use crate::backend::midi_handler::filter_map::apply_filter_map;
-use crate::backend::MidiPort;
 use crate::backend::properties::Properties;
+use crate::backend::MidiPort;
 use crate::gui::state::State;
+use crate::utils::repaint_gui;
 
 mod filter_map;
 
@@ -48,10 +48,7 @@ impl Listener {
                             // Set preset
                             properties.current_preset = program.as_int() as usize;
                             // Redraw frontend
-                            let ctx = self.gui_ctx.lock().unwrap();
-                            if let Some(ctx) = ctx.deref() {
-                                ctx.request_repaint();
-                            }
+                            repaint_gui(&self.gui_ctx);
                             // Don't send this data to the mappings
                             return;
                         }

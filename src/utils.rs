@@ -1,7 +1,9 @@
 use std::fs::File;
 use std::io::BufReader;
+use std::ops::Deref;
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
+use egui::Context;
 use pro_serde_versioned::{VersionedDeserialize, VersionedSerialize, VersionedUpgrade};
 use rfd::FileDialog;
 use serde::Deserialize;
@@ -28,13 +30,19 @@ pub fn save(location: &PathBuf, properties: Arc<Mutex<Properties>>) -> bool {
     let Ok(file) = File::create(location) else {
         return false;
     };
-    let properties = properties.lock().unwrap();
-    let versioned: PropertiesVersioned = properties.to_owned().into();
-    let serialised: serde_json::Value = versioned.versioned_serialize().unwrap();
+    let mut properties = properties.lock().unwrap();
+    let serialised = serialise_properties(&properties);
+    properties.saved = true;
     if serde_json::to_writer_pretty(file, &serialised).is_ok() {
         return true;
     }
     false
+}
+
+pub fn serialise_properties(properties : &Properties) -> serde_json::Value {
+    let versioned: PropertiesVersioned = properties.to_owned().into();
+    let serialised: serde_json::Value = versioned.versioned_serialize().unwrap();
+    serialised
 }
 
 pub fn load_dialog(properties: Arc<Mutex<Properties>>, current_tab: Arc<Mutex<Tab>>) -> Option<PathBuf> {
@@ -68,6 +76,7 @@ pub fn load(location: &PathBuf, properties: Arc<Mutex<Properties>>, current_tab:
             }
         };
 
+        properties.lock().unwrap().saved = true;
         *current_tab.lock().unwrap() = Tab::QuickStart;
         // TODO refresh view
         return true;
@@ -107,5 +116,12 @@ pub fn shorten_str(input: &str, max_len: usize) -> String {
         format!("{}...", &input[..max_len])
     } else {
         input.into()
+    }
+}
+
+pub fn repaint_gui(gui_ctx: &Arc<Mutex<Option<Context>>>) {
+    let ctx = gui_ctx.lock().unwrap();
+    if let Some(ctx) = ctx.deref() {
+        ctx.request_repaint();
     }
 }

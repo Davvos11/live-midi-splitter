@@ -53,7 +53,8 @@ impl Default for Gui {
         let _ = thread::spawn(move || backend.run());
         let bg_state = Arc::clone(&state);
         let bg_ctx = Arc::clone(&ctx_reference);
-        let _ = thread::spawn(move || run_background_functions(bg_state, bg_ctx));
+        let bg_properties = Arc::clone(&properties);
+        let _ = thread::spawn(move || run_background_functions(bg_state, bg_ctx, bg_properties));
 
         // Load recent files
         let recent_files = Arc::new(Mutex::new(RecentFiles::default()));

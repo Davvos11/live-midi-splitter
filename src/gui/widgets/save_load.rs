@@ -19,17 +19,19 @@ pub fn save_load(
     keybinds: &Keybinds,
 ) {
     ui.horizontal(|ui| {
-        if keybind_button(ui, "Open", &keybinds.load).clicked() {
+        if keybind_button(ui, "Open", &keybinds.load, true).clicked() {
             gui_load(properties, loading, recent_files, current_tab, state)
         }
+        
+        let changed = properties.lock().unwrap().changed;
 
         if let Some(filename) = state.lock().unwrap().file_path().clone() {
-            if keybind_button(ui, "Save", &keybinds.save).clicked() {
+            if keybind_button(ui, "Save", &keybinds.save, changed).clicked() {
                 gui_save(filename, properties, loading)
             }
         }
 
-        if keybind_button(ui, "Save as", &keybinds.save_as).clicked() {
+        if keybind_button(ui, "Save as", &keybinds.save_as, changed).clicked() {
             gui_save_as(properties, loading, recent_files, state)
         }
     });

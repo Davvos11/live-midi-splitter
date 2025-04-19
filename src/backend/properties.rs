@@ -15,11 +15,16 @@ pub struct MidiLearn {
 pub struct Properties {
     pub inputs: Vec<InputSettings>,
     pub presets: Vec<Preset>,
+    #[serde(skip)]
     pub current_preset: usize,
     #[serde(default)]
     pub transpose: i8,
     #[serde(default)]
     pub shortcuts: Vec<String>,
+    #[serde(skip)]
+    pub changed: bool,
+    #[serde(skip)]
+    pub saved: bool,
 }
 
 impl Properties {
@@ -58,6 +63,8 @@ impl Default for Properties {
             current_preset: 0,
             transpose: 0,
             shortcuts: vec![],
+            changed: false,
+            saved: false,
         }
     }
 }
