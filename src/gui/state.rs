@@ -13,8 +13,8 @@ pub struct State {
     pub pipewire_status: Option<Pipewire>,
     pub pipewire_error: Option<String>,
     pub midi_learn: MidiLearn,
-    pub file_path: Option<PathBuf>,
-    pub file_changed: bool,
+    file_path: Option<PathBuf>,
+    pub path_changed: bool,
 }
 
 impl State {
@@ -38,6 +38,16 @@ impl State {
             ..Default::default()
         }
     }
+
+    pub fn set_file_path(&mut self, file_path: PathBuf) {
+        self.file_path = Some(file_path);
+        self.path_changed = true;
+    }
+
+    pub fn file_path(&self) -> &Option<PathBuf> {
+        &self.file_path
+    }
+
 }
 
 #[derive(Default)]

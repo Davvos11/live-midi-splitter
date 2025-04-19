@@ -19,7 +19,7 @@ use crate::gui::widgets::transpose::transpose;
 use crate::utils::{load, shorten_str};
 use eframe::Frame;
 use egui::panel::{Side, TopBottomSide};
-use egui::Context;
+use egui::{Context, ViewportCommand};
 use egui_dnd::dnd;
 use egui_keybind::Bind;
 
@@ -81,7 +81,7 @@ impl Gui {
         let gui = Gui::default();
         let path = PathBuf::from(path);
         load(&path, Arc::clone(&gui.properties), Arc::clone(&gui.current_tab));
-        gui.state.lock().unwrap().file_path = Some(path.clone());
+        gui.state.lock().unwrap().set_file_path(path.clone());
         gui.recent_files.lock().unwrap().add(path);
 
         gui
@@ -101,6 +101,12 @@ impl eframe::App for Gui {
         let mut delete_preset = None;
         let mut duplicate_preset = None;
 
+        let file_path = self.state.lock().unwrap().file_path().clone();
+        
+        let filename = file_path.clone().map(|x| 
+            x.file_name().unwrap_or_default().to_string_lossy().to_string()
+        );
+        
         // Handle keybinds
         if ctx.input_mut(|i| self.keybinds.load.pressed(i)) {
             gui_load(&self.properties, &self.loading, &self.recent_files, &self.current_tab, &self.state);
@@ -109,23 +115,30 @@ impl eframe::App for Gui {
             gui_save_as(&self.properties, &self.loading, &self.recent_files, &self.state);
         }
         if ctx.input_mut(|i| self.keybinds.save.pressed(i)) {
-            if let Some(filename) = self.state.lock().unwrap().file_path.clone() {
-                gui_save(filename, &self.properties, &self.loading);
+            if let Some(filename) = &file_path {
+                gui_save(filename.clone(), &self.properties, &self.loading);
             } else {
                 gui_save_as(&self.properties, &self.loading, &self.recent_files, &self.state);
             }
         }
+        
+        {
+            // Update title bar (if title changed)
+            let mut state = self.state.lock().unwrap();
+            if state.path_changed {
+                if let Some(filename) = &filename {
+                    ctx.send_viewport_cmd(ViewportCommand::Title(format!("Live MIDI splitter - {filename}")))
+                }
+                state.path_changed = false;
+            }
+        }
 
         // Draw UI
-
         egui::TopBottomPanel::new(TopBottomSide::Top, "header").show(ctx, |ui| {
             egui::Grid::new("header-grid")
                 .show(ui, |ui| {
                     ui.heading("Live MIDI splitter");
-                    if let Some(path) = &self.state.lock().unwrap().file_path {
-                        let file_name = path.file_name()
-                            .map(|x| x.to_string_lossy())
-                            .unwrap_or_default();
+                    if let Some(file_name) = filename {
                         ui.label(shorten_str(&file_name, 20)).on_hover_text(file_name);
                     }
                     save_load(ui, &self.properties, &self.loading, &self.recent_files, &self.current_tab, &self.state, &self.keybinds);

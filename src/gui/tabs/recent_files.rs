@@ -46,7 +46,7 @@ pub fn recent_files(
                         *loading.lock().unwrap() = true;
                         let mut recent_files = recent_files.lock().unwrap();
                         if load(&location, properties, current_tab) {
-                            state.lock().unwrap().file_path = Some(file);
+                            state.lock().unwrap().set_file_path(file);
                             recent_files.add(location);
                         } else {
                             recent_files.remove(&location);

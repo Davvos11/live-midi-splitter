@@ -23,7 +23,7 @@ pub fn save_load(
             gui_load(properties, loading, recent_files, current_tab, state)
         }
 
-        if let Some(filename) = state.lock().unwrap().file_path.clone() {
+        if let Some(filename) = state.lock().unwrap().file_path().clone() {
             if keybind_button(ui, "Save", &keybinds.save).clicked() {
                 gui_save(filename, properties, loading)
             }
@@ -51,7 +51,7 @@ pub fn gui_load(
         *loading.lock().unwrap() = true;
         if let Some(file) = load_dialog(properties, current_tab) {
             let mut recent_files = recent_files.lock().unwrap();
-            state.lock().unwrap().file_path = Some(file.clone());
+            state.lock().unwrap().set_file_path(file.clone());
             recent_files.add(file);
         }
         *loading.lock().unwrap() = false;
@@ -86,7 +86,7 @@ pub fn gui_save_as(
         *loading.lock().unwrap() = true;
         if let Some(file) = save_dialog(properties) {
             let mut recent_files = recent_files.lock().unwrap();
-            state.lock().unwrap().file_path = Some(file.clone());
+            state.lock().unwrap().set_file_path(file.clone());
             recent_files.add(file);
         }
         *loading.lock().unwrap() = false;
