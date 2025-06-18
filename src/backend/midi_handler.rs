@@ -1,9 +1,6 @@
-use std::collections::{HashMap, HashSet};
-use std::sync::{Arc, Mutex};
-
-use egui::Context;
-use midly::num::{u4, u7};
-use midly::{live::LiveEvent, MidiMessage};
+use std::cmp::Reverse;
+use std::collections::{BinaryHeap, HashMap, HashSet};
+use std::sync::{mpsc, Arc, Mutex};
 
 use crate::backend::device::{ConnectError, Input, Output};
 use crate::backend::midi_handler::filter_map::apply_filter_map;
@@ -11,8 +8,13 @@ use crate::backend::properties::Properties;
 use crate::backend::MidiPort;
 use crate::gui::state::State;
 use crate::utils::repaint_gui;
+use egui::Context;
+use midly::num::{u4, u7};
+use midly::{live::LiveEvent, MidiMessage};
 
 mod filter_map;
+
+pub type QueueItems = Vec<(String, Vec<u8>)>;
 
 pub struct Listener {
     pub name: MidiPort,
@@ -23,13 +25,17 @@ pub struct Listener {
     pub output_handlers: Arc<Mutex<HashMap<String, Output>>>,
     pub event_buffer: Arc<Mutex<HashMap<LiveEvent<'static>, HashSet<EventBufferItem>>>>,
     pub held_pedals: Arc<Mutex<HashMap<(u4, u7), u7>>>, // (channel, controller): value
+    pub queue: Arc<Mutex<BinaryHeap<Reverse<u64>>>>,
+    pub event_sender: mpsc::Sender<(u64, QueueItems)>,
 }
 
 impl Listener {
     pub fn create(self) -> Result<Input, ConnectError> {
         Input::new(
             self.name,
-            move |_, data, previous_preset| {
+            move |timestamp, data, previous_preset| {
+                // Add the timestamp of this event to the queue (do not add queue items yet)
+                self.queue.lock().unwrap().push(Reverse(timestamp));
 
                 // Parse midi data
                 let event = LiveEvent::parse(data);
@@ -38,6 +44,7 @@ impl Listener {
                     return;
                 }
                 let event = event.unwrap();
+                let mut send_events = Vec::new();
 
                 {
                     let mut properties = self.properties.lock().unwrap();
@@ -104,9 +111,7 @@ impl Listener {
                                 let pedal_event = LiveEvent::Midi { channel, message: MidiMessage::Controller { controller, value } };
                                 let mut data = Vec::new();
                                 if pedal_event.write(&mut data).is_ok() {
-                                    let mut output_handlers = self.output_handlers.lock().unwrap();
-                                    output_handlers.get_mut(&output.port_name).unwrap()
-                                        .connection.send(&data).unwrap_or_else(|_| println!("Failed to send to {}", output.port_name));
+                                    send_events.push((output.port_name.clone(), data.clone()));
                                 }
                             });
                         }
@@ -131,11 +136,7 @@ impl Listener {
                         }
 
                         if send {
-                            // Send data
-                            // We can unwrap because we checked or inserted the item above
-                            let mut output_handlers = self.output_handlers.lock().unwrap();
-                            output_handlers.get_mut(&output.port_name).unwrap()
-                                .connection.send(&data).unwrap_or_else(|_| println!("Failed to send to {}", output.port_name));
+                            send_events.push((output.port_name.clone(), data.clone()));
                         }
 
                         // Parse midi data (again, after filter/mapping)
@@ -226,49 +227,50 @@ impl Listener {
                 }
 
                 // Send note-off, after-touch and pedal release events to outputs that are no longer active
-                    let mut off_event = None;
-                    if let LiveEvent::Midi { channel, message } = event {
-                        match message {
-                            MidiMessage::NoteOff { key, .. } |
-                            MidiMessage::Aftertouch { key, .. } => {
-                                off_event = Some(LiveEvent::Midi { channel, message: MidiMessage::NoteOff { key, vel: 0.into() } });
-                                // NOTE: after-touch events for held notes should also get sent to previous outputs
-                                // I have not tested this, since I do not own a keyboard with after-touch
-                            }
-                            MidiMessage::Controller { controller, value } => {
-                                match controller.as_int() {
-                                    64 | 66 | 69 => {
-                                        if value < 64 {
-                                            off_event = Some(
-                                                LiveEvent::Midi { channel, message: MidiMessage::Controller { controller, value: 0.into() } }
-                                            );
-                                            // Mark pedal as released
-                                            self.held_pedals.lock().unwrap().remove(&(channel, controller));
-                                        }
+                let mut off_event = None;
+                if let LiveEvent::Midi { channel, message } = event {
+                    match message {
+                        MidiMessage::NoteOff { key, .. } |
+                        MidiMessage::Aftertouch { key, .. } => {
+                            off_event = Some(LiveEvent::Midi { channel, message: MidiMessage::NoteOff { key, vel: 0.into() } });
+                            // NOTE: after-touch events for held notes should also get sent to previous outputs
+                            // I have not tested this, since I do not own a keyboard with after-touch
+                        }
+                        MidiMessage::Controller { controller, value } => {
+                            match controller.as_int() {
+                                64 | 66 | 69 => {
+                                    if value < 64 {
+                                        off_event = Some(
+                                            LiveEvent::Midi { channel, message: MidiMessage::Controller { controller, value: 0.into() } }
+                                        );
+                                        // Mark pedal as released
+                                        self.held_pedals.lock().unwrap().remove(&(channel, controller));
                                     }
-                                    _ => {}
                                 }
+                                _ => {}
                             }
-                            _ => {}
                         }
-                    };
-                    if let Some(off_event) = off_event {
-                        // Get outputs that need this off event _and_ remove it from the buffer.
-                        let mut event_buffer = self.event_buffer.lock().unwrap();
-                        if let Some(outputs) = event_buffer.remove(&off_event) {
-                            let mut output_handlers = self.output_handlers.lock().unwrap();
-                            // Send to outputs that still need note-off events
-                            outputs.iter().for_each(|item| {
-                                let mut buf = Vec::new();
-                                if let Err(e) = item.off_event.write(&mut buf) {
-                                    eprintln!("{e}");
-                                }
-                                output_handlers.get_mut(&item.output_name).unwrap()
-                                    .connection.send(&buf)
-                                    .unwrap_or_else(|_| println!("Failed to send to {}", &item.output_name));
-                            });
-                        }
+                        _ => {}
                     }
+                };
+                if let Some(off_event) = off_event {
+                    // Get outputs that need this off event _and_ remove it from the buffer.
+                    let mut event_buffer = self.event_buffer.lock().unwrap();
+                    if let Some(outputs) = event_buffer.remove(&off_event) {
+                        // Send to outputs that still need note-off events
+                        outputs.iter().for_each(|item| {
+                            let mut buf = Vec::new();
+                            if let Err(e) = item.off_event.write(&mut buf) {
+                                eprintln!("{e}");
+                            }
+                            send_events.push((item.output_name.clone(), buf.clone()));
+                        });
+                    }
+                }
+                // Send events to the queue handler thread
+                if let Err(e) = self.event_sender.send((timestamp, send_events)) {
+                    eprintln!("Error sending events {e:?}");
+                }
             },
         )
     }
@@ -288,4 +290,55 @@ fn same_channel(event_a: LiveEvent, event_b: LiveEvent) -> bool {
         }
     }
     false
+}
+
+pub struct QueueHandler {
+    priority_queue: Arc<Mutex<BinaryHeap<Reverse<u64>>>>,
+    output_handlers: Arc<Mutex<HashMap<String, Output>>>,
+    event_queue: HashMap<u64, QueueItems>,
+}
+
+impl QueueHandler {
+    pub fn run(&mut self, rx: mpsc::Receiver<(u64, QueueItems)>) {
+        loop {
+            // Receive incoming events
+            let (timestamp, events) = rx.recv().unwrap();
+            // If this is the next event in the priority queue, send it
+            if self.should_send_event(timestamp) {
+                self.priority_queue.lock().unwrap().pop();
+                self.send_events(&events);
+            } else {
+                // If this is not the next event, cache it
+                self.event_queue.insert(timestamp, events);
+            }
+
+            // Check if the next event in the priority queue is in the cache
+            if let Some(next_timestamp) = self.priority_queue.lock().unwrap().peek() {
+                if let Some(events) = self.event_queue.remove(&next_timestamp.0) {
+                    self.send_events(&events);
+                }
+            }
+        }
+    }
+
+    fn should_send_event(&mut self, timestamp: u64) -> bool {
+        if let Some(next_timestamp) = self.priority_queue.lock().unwrap().peek() {
+            if next_timestamp.0 == timestamp {
+                return true;
+            }
+        }
+        false
+    }
+
+    fn send_events(&self, events: &QueueItems) {
+        let mut output_handlers = self.output_handlers.lock().unwrap();
+        for (port_name, data) in events {
+            output_handlers.get_mut(port_name).unwrap()
+                .connection.send(data).unwrap_or_else(|_| eprintln!("Failed to send to {port_name}"));
+        }
+    }
+
+    pub fn new(output_handlers: Arc<Mutex<HashMap<String, Output>>>, priority_queue: Arc<Mutex<BinaryHeap<Reverse<u64>>>>) -> Self {
+        Self { priority_queue, output_handlers, event_queue: HashMap::new() }
+    }
 }

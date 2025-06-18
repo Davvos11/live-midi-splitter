@@ -1,10 +1,11 @@
-use std::collections::{HashMap, HashSet};
-use std::sync::{Arc, Mutex};
+use std::cmp::Reverse;
+use std::collections::{BinaryHeap, HashMap, HashSet};
+use std::sync::{mpsc, Arc, Mutex};
 use std::thread;
 use std::time::Duration;
 
 use crate::backend::device::{new_input, new_output, Input, Output};
-use crate::backend::midi_handler::{EventBufferItem, Listener};
+use crate::backend::midi_handler::{EventBufferItem, Listener, QueueHandler, QueueItems};
 use crate::backend::properties::Properties;
 use crate::gui::state::State;
 use egui::Context;
@@ -33,6 +34,7 @@ pub struct Backend {
     output_handlers: Arc<Mutex<HashMap<String, Output>>>,
     event_buffer: Arc<Mutex<HashMap<LiveEvent<'static>, HashSet<EventBufferItem>>>>,
     held_pedals: Arc<Mutex<HashMap<(u4, u7), u7>>>, // (channel, controller): value
+    queue: Arc<Mutex<BinaryHeap<Reverse<u64>>>>,
 }
 
 impl Backend {
@@ -46,6 +48,7 @@ impl Backend {
             output_handlers: Arc::new(Mutex::new(HashMap::new())),
             event_buffer: Arc::new(Mutex::new(HashMap::new())),
             held_pedals: Arc::new(Mutex::new(HashMap::new())),
+            queue: Arc::new(Mutex::new(BinaryHeap::new())),
         }
     }
 
@@ -53,6 +56,12 @@ impl Backend {
         // TODO error to frontend (new_input uses unwrap)
         let midi_in = new_input();
         let midi_out = new_output();
+        
+        let (event_sender, event_receiver) = mpsc::channel::<(u64, QueueItems)>();
+
+        let mut queue_handler = QueueHandler::new(Arc::clone(&self.output_handlers), Arc::clone(&self.queue));
+        let _ = thread::spawn(move || queue_handler.run(event_receiver));
+
         loop {
             {
                 let properties = self.properties.lock().unwrap();
@@ -73,9 +82,11 @@ impl Backend {
                         output_handlers: Arc::clone(&self.output_handlers),
                         event_buffer: Arc::clone(&self.event_buffer),
                         held_pedals: Arc::clone(&self.held_pedals),
+                        queue: Arc::clone(&self.queue),
+                        event_sender: event_sender.clone(),
                     }.create()
                 };
-
+                
                 // Update input listeners
                 properties.inputs.iter()
                     .filter(|s| !s.port_name.is_empty())
