@@ -39,32 +39,36 @@ impl Listener {
                 }
                 let event = event.unwrap();
 
-                let mut properties = self.properties.lock().unwrap();
-
-                if let Some(input_settings) = properties.inputs.get(self.input_id) {
-                    // Handle program change, if enabled
-                    if input_settings.use_program_change {
-                        if let LiveEvent::Midi { message: MidiMessage::ProgramChange { program }, .. } = event {
-                            // Set preset
-                            properties.current_preset = program.as_int() as usize;
-                            // Redraw frontend
-                            repaint_gui(&self.gui_ctx);
-                            // Don't send this data to the mappings
-                            return;
+                {
+                    let mut properties = self.properties.lock().unwrap();
+                    if let Some(input_settings) = properties.inputs.get(self.input_id) {
+                        // Handle program change, if enabled
+                        if input_settings.use_program_change {
+                            if let LiveEvent::Midi { message: MidiMessage::ProgramChange { program }, .. } = event {
+                                // Set preset
+                                properties.current_preset = program.as_int() as usize;
+                                // Redraw frontend
+                                repaint_gui(&self.gui_ctx);
+                                // Don't send this data to the mappings
+                                return;
+                            }
                         }
+                    } else {
+                        eprintln!("Could not get input settings for input {}", self.input_id)
                     }
-                } else {
-                    eprintln!("Could not get input settings for input {}", self.input_id)
                 }
 
                 let mut output_handlers = self.output_handlers.lock().unwrap();
                 // Get preset
-                let preset = properties.presets.get(properties.current_preset);
-                if let Some(mapping) = preset.and_then(|p| p.mapping.get(&self.input_id)) {
+                let preset = {
+                    let properties = self.properties.lock().unwrap();
+                    properties.presets.get(properties.current_preset).cloned()
+                };
+                if let Some(mapping) = preset.as_ref().and_then(|p| p.mapping.get(&self.input_id).cloned()) {
                     // Check if we changed presets
-                    let changed_preset = preset.unwrap().id != *previous_preset;
+                    let changed_preset = preset.as_ref().unwrap().id != *previous_preset;
                     if changed_preset {
-                        *previous_preset = preset.unwrap().id
+                        *previous_preset = preset.as_ref().unwrap().id
                     }
 
                     // Loop through mappings
@@ -108,17 +112,20 @@ impl Listener {
 
                         let mut send = true;
                         let mut ignore_transpose = output.transpose.ignore_global;
-                        if let Some(input_settings) = properties.inputs.get(self.input_id) {
-                            apply_filter_map(&mut data, &mut send, input_settings);
-                            ignore_transpose |= input_settings.transpose.ignore_global;
-                        }
-                        apply_filter_map(&mut data, &mut send, output);
+                        {
+                            let properties = self.properties.lock().unwrap();
+                            if let Some(input_settings) = properties.inputs.get(self.input_id) {
+                                apply_filter_map(&mut data, &mut send, input_settings);
+                                ignore_transpose |= input_settings.transpose.ignore_global;
+                            }
+                            apply_filter_map(&mut data, &mut send, output);
 
-                        // Apply global transpose
-                        if properties.transpose != 0 && !ignore_transpose {
-                            if let LiveEvent::Midi { message: MidiMessage::NoteOff { .. } | MidiMessage::NoteOn { .. } | MidiMessage::Aftertouch { .. }, .. } = event {
-                                // Change raw data directly. data[1] is the key value. set to 0 at underflow
-                                data[1] = data[1].checked_add_signed(properties.transpose).unwrap_or(0);
+                            // Apply global transpose
+                            if properties.transpose != 0 && !ignore_transpose {
+                                if let LiveEvent::Midi { message: MidiMessage::NoteOff { .. } | MidiMessage::NoteOn { .. } | MidiMessage::Aftertouch { .. }, .. } = event {
+                                    // Change raw data directly. data[1] is the key value. set to 0 at underflow
+                                    data[1] = data[1].checked_add_signed(properties.transpose).unwrap_or(0);
+                                }
                             }
                         }
 
@@ -139,7 +146,6 @@ impl Listener {
 
                         // If this is a note-on or pedal event, save it
                         // If this is a note-off or pedal release event, remove previously saved event
-                        let mut event_buffer = self.event_buffer.lock().unwrap();
                         if let LiveEvent::Midi { channel, message } = event {
                             match message {
                                 MidiMessage::NoteOn { key, .. } => {
@@ -153,12 +159,14 @@ impl Listener {
                                             return;
                                         }
                                     };
+                                    let mut event_buffer = self.event_buffer.lock().unwrap();
                                     event_buffer.entry(off_listen_event).or_default()
                                         .insert(EventBufferItem { output_name: output.port_name.clone(), off_event: off_send_event });
                                 }
                                 MidiMessage::NoteOff { key, .. } => {
                                     // Remove previously saved event (saved on note-on)
                                     let off_event = LiveEvent::Midi { channel, message: MidiMessage::NoteOff { key, vel: 0.into() } };
+                                    let mut event_buffer = self.event_buffer.lock().unwrap();
                                     if let Some(outputs) = event_buffer.get_mut(&off_event) {
                                         if let Some(item) = outputs.iter().find(|i| i.output_name == output.port_name).cloned() {
                                             // Only remove event if it was meant to go to the same output channel as us
@@ -183,6 +191,7 @@ impl Listener {
                                                             return;
                                                         }
                                                     };
+                                                    let mut event_buffer = self.event_buffer.lock().unwrap();
                                                     event_buffer.entry(off_listen_event).or_default()
                                                         .insert(EventBufferItem { output_name: output.port_name.clone(), off_event: off_send_event });
                                                     // Mark pedal as held (so it can be sent on preset switch)
@@ -190,6 +199,7 @@ impl Listener {
                                                 } else {
                                                     // Remove previously saved event (saved on note-on)
                                                     let off_event = LiveEvent::Midi { channel, message: MidiMessage::Controller { controller, value: 0.into() } };
+                                                    let mut event_buffer = self.event_buffer.lock().unwrap();
                                                     if let Some(outputs) = event_buffer.get_mut(&off_event) {
                                                         if let Some(item) = outputs.iter().find(|i| i.output_name == output.port_name).cloned() {
                                                             // Only remove event if it was meant to go to the same output channel as us
@@ -208,9 +218,12 @@ impl Listener {
                             }
                         }
                     });
+                } else {
+                    let properties = self.properties.lock().unwrap();
+                    eprintln!("Could not get output mapping for preset {} input {}", properties.current_preset, self.input_id)
+                }
 
-                    // Send note-off, after-touch and pedal release events to outputs that are no longer active
-                    let mut event_buffer = self.event_buffer.lock().unwrap();
+                // Send note-off, after-touch and pedal release events to outputs that are no longer active
                     let mut off_event = None;
                     if let LiveEvent::Midi { channel, message } = event {
                         match message {
@@ -239,6 +252,7 @@ impl Listener {
                     };
                     if let Some(off_event) = off_event {
                         // Get outputs that need this off event _and_ remove it from the buffer.
+                        let mut event_buffer = self.event_buffer.lock().unwrap();
                         if let Some(outputs) = event_buffer.remove(&off_event) {
                             // Send to outputs that still need note-off events
                             outputs.iter().for_each(|item| {
@@ -252,9 +266,6 @@ impl Listener {
                             });
                         }
                     }
-                } else {
-                    eprintln!("Could not get output mapping for preset {} input {}", properties.current_preset, self.input_id)
-                }
             },
         )
     }
