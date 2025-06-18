@@ -58,7 +58,6 @@ impl Listener {
                     }
                 }
 
-                let mut output_handlers = self.output_handlers.lock().unwrap();
                 // Get preset
                 let preset = {
                     let properties = self.properties.lock().unwrap();
@@ -77,6 +76,7 @@ impl Listener {
                         let mut data = data.to_owned();
                         {
                             let state = self.state.lock().unwrap();
+                            let mut output_handlers = self.output_handlers.lock().unwrap();
                             // Check if the output target has disconnected
                             let output_port = state.available_outputs.iter().find(|p| p.readable == output.port_name);
                             if output_port.is_none() {
@@ -104,6 +104,7 @@ impl Listener {
                                 let pedal_event = LiveEvent::Midi { channel, message: MidiMessage::Controller { controller, value } };
                                 let mut data = Vec::new();
                                 if pedal_event.write(&mut data).is_ok() {
+                                    let mut output_handlers = self.output_handlers.lock().unwrap();
                                     output_handlers.get_mut(&output.port_name).unwrap()
                                         .connection.send(&data).unwrap_or_else(|_| println!("Failed to send to {}", output.port_name));
                                 }
@@ -132,6 +133,7 @@ impl Listener {
                         if send {
                             // Send data
                             // We can unwrap because we checked or inserted the item above
+                            let mut output_handlers = self.output_handlers.lock().unwrap();
                             output_handlers.get_mut(&output.port_name).unwrap()
                                 .connection.send(&data).unwrap_or_else(|_| println!("Failed to send to {}", output.port_name));
                         }
@@ -254,6 +256,7 @@ impl Listener {
                         // Get outputs that need this off event _and_ remove it from the buffer.
                         let mut event_buffer = self.event_buffer.lock().unwrap();
                         if let Some(outputs) = event_buffer.remove(&off_event) {
+                            let mut output_handlers = self.output_handlers.lock().unwrap();
                             // Send to outputs that still need note-off events
                             outputs.iter().for_each(|item| {
                                 let mut buf = Vec::new();
