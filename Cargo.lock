@@ -1631,7 +1631,7 @@ checksum = "b4ce301924b7887e9d637144fdade93f9dfff9b60981d4ac161db09720d39aa5"
 
 [[package]]
 name = "live-midi-splitter"
-version = "0.8.3"
+version = "0.9.0"
 dependencies = [
  "dirs 6.0.0",
  "eframe",
