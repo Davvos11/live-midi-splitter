@@ -30,8 +30,6 @@ impl Listener {
         Input::new(
             self.name,
             move |_, data, previous_preset| {
-                let mut properties = self.properties.lock().unwrap();
-                let state = self.state.lock().unwrap();
 
                 // Parse midi data
                 let event = LiveEvent::parse(data);
@@ -41,6 +39,8 @@ impl Listener {
                 }
                 let event = event.unwrap();
 
+                let mut properties = self.properties.lock().unwrap();
+                
                 if let Some(input_settings) = properties.inputs.get(self.input_id) {
                     // Handle program change, if enabled
                     if input_settings.use_program_change {
@@ -71,23 +71,26 @@ impl Listener {
                     mapping.iter().for_each(|output| {
                         // Clone data so we can modify it separately for each output mapping
                         let mut data = data.to_owned();
-                        // Check if the output target has disconnected
-                        let output_port =  state.available_outputs.iter().find(|p| p.readable == output.port_name);
-                        if output_port.is_none() {
-                            output_handlers.remove(&output.port_name);
-                            return;
-                        }
-                        let output_port = output_port.unwrap(); // safe because of if above
+                        {
+                            let state = self.state.lock().unwrap();
+                            // Check if the output target has disconnected
+                            let output_port = state.available_outputs.iter().find(|p| p.readable == output.port_name);
+                            if output_port.is_none() {
+                                output_handlers.remove(&output.port_name);
+                                return;
+                            }
+                            let output_port = output_port.unwrap(); // safe because of if above
 
-                        // Find output_handler or create new
-                        if !output_handlers.contains_key(&output.port_name) {
-                            // Try to connect
-                            let new_handler = Output::new(output_port);
-                            match new_handler {
-                                Ok(handler) => {
-                                    output_handlers.insert(output.port_name.clone(), handler);
+                            // Find output_handler or create new
+                            if !output_handlers.contains_key(&output.port_name) {
+                                // Try to connect
+                                let new_handler = Output::new(output_port);
+                                match new_handler {
+                                    Ok(handler) => {
+                                        output_handlers.insert(output.port_name.clone(), handler);
+                                    }
+                                    Err(_) => { return; }
                                 }
-                                Err(_) => { return; }
                             }
                         }
 
