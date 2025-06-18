@@ -5,6 +5,7 @@ use egui::Context;
 use std::sync::{Arc, Mutex};
 use std::thread::sleep;
 use std::time::Duration;
+use crate::backend::pipewire_utils::{Pipewire, PipewireError};
 
 pub fn run_background_functions(
     state: Arc<Mutex<State>>,
@@ -16,17 +17,16 @@ pub fn run_background_functions(
     loop {
         // Update Pipewire Info
         {
-            let mut state = state.lock().unwrap();
-            if let Some(pipewire) = &mut state.pipewire_status {
-                match pipewire.update() {
-                    Err(err) => {
-                        state.pipewire_error = Some(err.to_string());
-                    }
-                    Ok(updated) => {
-                        state.pipewire_error = None;
-                        if updated {
-                            repaint_gui(&gui_ctx);
-                        }
+            match update_pipewire(&state) {
+                Err(err) => {
+                    let mut state = state.lock().unwrap();
+                    state.pipewire_error = Some(err.to_string());
+                }
+                Ok(updated) => {
+                    let mut state = state.lock().unwrap();
+                    state.pipewire_error = None;
+                    if updated {
+                        repaint_gui(&gui_ctx);
                     }
                 }
             }
@@ -55,4 +55,21 @@ pub fn run_background_functions(
         }
         sleep(Duration::from_millis(500));
     }
+}
+
+pub fn update_pipewire(state: &Arc<Mutex<State>>) -> Result<bool, PipewireError> {
+    let update = if let Some(pipewire) = &mut state.lock().unwrap().pipewire_status {
+        pipewire.update()?
+    } else {
+        false
+    };
+    
+    if update {
+        let data = Pipewire::get_new_data()?;
+        if let Some(pipewire) = &mut state.lock().unwrap().pipewire_status {
+            pipewire.update_manual(data)?;
+        }
+    }
+    
+    Ok(update)
 }

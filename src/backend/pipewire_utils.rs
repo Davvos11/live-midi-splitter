@@ -1,10 +1,10 @@
 use once_cell::sync::Lazy;
 use regex::Regex;
 use std::fmt::{Display, Formatter};
+use std::io;
 use std::process::{Command, ExitStatus};
 use std::str::FromStr;
 use std::time::Instant;
-use std::io;
 
 pub fn pipewire_installed() -> bool {
     let pipewire_installed = Command::new("pipewire").arg("--version").status();
@@ -137,22 +137,38 @@ impl Pipewire {
         })
     }
 
-    pub fn update(&mut self) -> Result<bool, PipewireError> {
+    pub fn should_update(&self) -> Result<bool, PipewireError> {
         let now = Instant::now();
-        let mut update = now.duration_since(self.last_update).as_secs() > 1;
+        if now.duration_since(self.last_update).as_secs() > 1 {
+            return Ok(true);
+        }
         if let Some(new_buffer_size) = self.set_buffer_size {
             Self::_set_buffer_size(new_buffer_size)?;
-            update = true;
+            return Ok(true);
         }
+        Ok(false)
+    }
+    
+    pub fn get_new_data() -> Result<PipeWireData, PipewireError> {
+        let buffer_size = Self::_get_buffer_size()?;
+        let force_buffer_size = Self::_get_force_buffer_size()?;
+        let sample_rate = Self::_get_sample_rate()?;
+        Ok(PipeWireData::new(buffer_size, force_buffer_size, sample_rate))
+    }
+    
+    pub fn update(&mut self) -> Result<bool, PipewireError> {
+        let update = self.should_update()?;
         if update {
-            let buffer_size = Self::_get_buffer_size()?;
-            let force_buffer_size = Self::_get_force_buffer_size()?;
-            let sample_rate = Self::_get_sample_rate()?;
-            self.data = PipeWireData::new(buffer_size, force_buffer_size, sample_rate);
+            self.data = Self::get_new_data()?;
             self.last_update = Instant::now();
         }
-
         Ok(update)
+    }
+    
+    pub fn update_manual(&mut self, data: PipeWireData) -> Result<(), PipewireError> {
+        self.data = data;
+        self.last_update = Instant::now();
+        Ok(())
     }
 
     pub fn get_values(&mut self) -> PipeWireData {

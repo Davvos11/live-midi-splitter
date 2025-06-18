@@ -4,6 +4,7 @@ use crate::backend::MidiPort;
 use crate::gui::widgets::input_settings::InputTab;
 use std::collections::HashMap;
 use std::path::PathBuf;
+use std::sync::{Arc, Mutex};
 use crate::gui::widgets::mapping_settings::OutputTab;
 
 #[derive(Default, Clone, Debug)]
