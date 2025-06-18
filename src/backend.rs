@@ -59,9 +59,12 @@ impl Backend {
 
         let (event_sender, event_receiver) = mpsc::channel::<(u64, QueueItems)>();
 
-        let mut queue_handler =
-            QueueHandler::new(Arc::clone(&self.output_handlers), Arc::clone(&self.queue));
-        let _ = thread::spawn(move || queue_handler.run(event_receiver));
+        let mut queue_handler = QueueHandler::new(
+            event_receiver,
+            Arc::clone(&self.output_handlers),
+            Arc::clone(&self.queue),
+        );
+        let _ = thread::spawn(move || queue_handler.run());
 
         loop {
             {

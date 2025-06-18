@@ -1,7 +1,3 @@
-use std::cmp::Reverse;
-use std::collections::{BinaryHeap, HashMap, HashSet};
-use std::sync::{mpsc, Arc, Mutex};
-
 use crate::backend::device::{ConnectError, Input, Output};
 use crate::backend::midi_handler::filter_map::apply_filter_map;
 use crate::backend::properties::Properties;
@@ -11,6 +7,11 @@ use crate::utils::repaint_gui;
 use egui::Context;
 use midly::num::{u4, u7};
 use midly::{live::LiveEvent, MidiMessage};
+use std::cmp::Reverse;
+use std::collections::{BinaryHeap, HashMap, HashSet};
+use std::sync::{mpsc, Arc, Mutex};
+use std::time::Instant;
+use tracing::warn;
 
 mod filter_map;
 
@@ -31,6 +32,7 @@ pub struct Listener {
 
 impl Listener {
     pub fn create(self) -> Result<Input, ConnectError> {
+        // TODO this should really be cleaned up
         Input::new(self.name, move |timestamp, data, previous_preset| {
             // Add the timestamp of this event to the queue (do not add queue items yet)
             self.queue.lock().unwrap().push(Reverse(timestamp));
@@ -39,6 +41,7 @@ impl Listener {
             let event = LiveEvent::parse(data);
             if let Err(error) = event {
                 eprintln!("Midi parse error: {error}");
+                cancel_event(&self.queue, timestamp);
                 return;
             }
             let event = event.unwrap();
@@ -59,6 +62,7 @@ impl Listener {
                             // Redraw frontend
                             repaint_gui(&self.gui_ctx);
                             // Don't send this data to the mappings
+                            cancel_event(&self.queue, timestamp);
                             return;
                         }
                     }
@@ -96,6 +100,7 @@ impl Listener {
                             .find(|p| p.readable == output.port_name);
                         if output_port.is_none() {
                             output_handlers.remove(&output.port_name);
+                            cancel_event(&self.queue, timestamp);
                             return;
                         }
                         let output_port = output_port.unwrap(); // safe because of if above
@@ -109,6 +114,7 @@ impl Listener {
                                     output_handlers.insert(output.port_name.clone(), handler);
                                 }
                                 Err(_) => {
+                                    cancel_event(&self.queue, timestamp);
                                     return;
                                 }
                             }
@@ -167,6 +173,7 @@ impl Listener {
                     let event_after = LiveEvent::parse(&data);
                     if let Err(error) = event_after {
                         eprintln!("Midi parse error: {error}");
+                        cancel_event(&self.queue, timestamp);
                         return;
                     }
                     let event_after = event_after.unwrap();
@@ -193,6 +200,7 @@ impl Listener {
                                         }
                                     } else {
                                         eprintln!("Event before and after don' t match");
+                                        cancel_event(&self.queue, timestamp);
                                         return;
                                     }
                                 };
@@ -257,6 +265,7 @@ impl Listener {
                                                         eprintln!(
                                                             "Event before and after don' t match"
                                                         );
+                                                        cancel_event(&self.queue, timestamp);
                                                         return;
                                                     }
                                                 };
@@ -376,6 +385,11 @@ impl Listener {
     }
 }
 
+fn cancel_event(queue: &Arc<Mutex<BinaryHeap<Reverse<u64>>>>, timestamp: u64) {
+    let value = Reverse(timestamp);
+    queue.lock().unwrap().retain(|&x| x != value);
+}
+
 #[derive(PartialEq, Eq, Hash, Clone)]
 pub struct EventBufferItem {
     output_name: String,
@@ -393,31 +407,54 @@ fn same_channel(event_a: LiveEvent, event_b: LiveEvent) -> bool {
 }
 
 pub struct QueueHandler {
+    rx: mpsc::Receiver<(u64, QueueItems)>,
     priority_queue: Arc<Mutex<BinaryHeap<Reverse<u64>>>>,
     output_handlers: Arc<Mutex<HashMap<String, Output>>>,
     event_queue: HashMap<u64, QueueItems>,
+    last_sent: Instant,
 }
 
 impl QueueHandler {
-    pub fn run(&mut self, rx: mpsc::Receiver<(u64, QueueItems)>) {
+    pub fn run(&mut self) {
         loop {
             // Receive incoming events
-            let (timestamp, events) = rx.recv().unwrap();
-            // If this is the next event in the priority queue, send it
-            if self.should_send_event(timestamp) {
-                self.priority_queue.lock().unwrap().pop();
-                self.send_events(&events);
-            } else {
-                // If this is not the next event, cache it
-                self.event_queue.insert(timestamp, events);
+            if let Some((timestamp, events)) = self.receive() {
+                // If this is the next event in the priority queue, send it
+                if self.should_send_event(timestamp) {
+                    self.priority_queue.lock().unwrap().pop();
+                    self.last_sent = Instant::now();
+                    self.send_events(&events);
+                } else {
+                    // If this is not the next event, cache it
+                    self.event_queue.insert(timestamp, events);
+                }
             }
 
             // Check if the next event in the priority queue is in the cache
-            if let Some(next_timestamp) = self.priority_queue.lock().unwrap().peek() {
+            let next = self.priority_queue.lock().unwrap().peek().cloned();
+            if let Some(next_timestamp) = next {
                 if let Some(events) = self.event_queue.remove(&next_timestamp.0) {
+                    self.last_sent = Instant::now();
+                    self.priority_queue.lock().unwrap().pop();
                     self.send_events(&events);
                 }
+                // Timeout if the timestamp is too long ago
+                if Instant::now().duration_since(self.last_sent).as_secs_f32() > 0.25 {
+                    warn!("Removed event from priority queue due to timeout");
+                    self.last_sent = Instant::now();
+                    self.priority_queue.lock().unwrap().pop();
+                }
             }
+        }
+    }
+
+    fn receive(&self) -> Option<(u64, QueueItems)> {
+        if self.priority_queue.lock().unwrap().is_empty() {
+            // If the queue is empty: block until something is sent on the channel
+            Some(self.rx.recv().unwrap())
+        } else {
+            // If the queue has some items: do not block, only check if there is channel activity
+            self.rx.try_recv().ok()
         }
     }
 
@@ -443,13 +480,16 @@ impl QueueHandler {
     }
 
     pub fn new(
+        rx: mpsc::Receiver<(u64, QueueItems)>,
         output_handlers: Arc<Mutex<HashMap<String, Output>>>,
         priority_queue: Arc<Mutex<BinaryHeap<Reverse<u64>>>>,
     ) -> Self {
         Self {
+            rx,
             priority_queue,
             output_handlers,
             event_queue: HashMap::new(),
+            last_sent: Instant::now(),
         }
     }
 }
