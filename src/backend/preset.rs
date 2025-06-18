@@ -1,7 +1,7 @@
+use crate::backend::output_settings::OutputSettings;
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::hash::{Hash, Hasher};
-use serde::{Deserialize, Serialize};
-use crate::backend::output_settings::OutputSettings;
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct Preset {

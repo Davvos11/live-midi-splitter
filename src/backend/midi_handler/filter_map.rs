@@ -1,8 +1,8 @@
 use midly::live::LiveEvent;
 use midly::MidiMessage;
 
-use crate::backend::common_settings::{CcMapping, ChannelMapping};
 use crate::backend::common_settings::CommonSettings;
+use crate::backend::common_settings::{CcMapping, ChannelMapping};
 
 pub fn apply_filter_map(data: &mut [u8], send: &mut bool, settings: &impl CommonSettings) {
     {
@@ -18,19 +18,25 @@ pub fn apply_filter_map(data: &mut [u8], send: &mut bool, settings: &impl Common
             match message {
                 MidiMessage::NoteOn { key, vel } | MidiMessage::NoteOff { key, vel } => {
                     // Apply key filter
-                    if settings.key_filter_enabled() &&
-                        (settings.key_filter().0 > key || settings.key_filter().1 < key) {
+                    if settings.key_filter_enabled()
+                        && (settings.key_filter().0 > key || settings.key_filter().1 < key)
+                    {
                         *send = false;
                     }
 
                     // Apply key transpose
                     if settings.transpose().value != 0 {
                         // Change raw data directly. data[1] is the key value. set to 0 at underflow
-                        data[1] = data[1].checked_add_signed(settings.transpose().value).unwrap_or(0);
+                        data[1] = data[1]
+                            .checked_add_signed(settings.transpose().value)
+                            .unwrap_or(0);
                     }
 
                     // Apply channel filter / map
-                    let channel_map = settings.channel_map().iter().find(|(ch, _)| *ch == channel.as_int() + 1)
+                    let channel_map = settings
+                        .channel_map()
+                        .iter()
+                        .find(|(ch, _)| *ch == channel.as_int() + 1)
                         .or(settings.channel_map().last());
                     if let Some((_, channel_map)) = channel_map {
                         match channel_map {
@@ -41,7 +47,7 @@ pub fn apply_filter_map(data: &mut [u8], send: &mut bool, settings: &impl Common
                                 // channel is 0..=15, new_channel is 1..=16
                                 data[0] = data[0] - channel.as_int() + new_channel - 1;
                             }
-                            ChannelMapping::Ignore => { *send = false }
+                            ChannelMapping::Ignore => *send = false,
                         }
                     }
 
@@ -52,11 +58,21 @@ pub fn apply_filter_map(data: &mut [u8], send: &mut bool, settings: &impl Common
                     }
                 }
                 MidiMessage::Controller { controller, .. } => {
-                    let map =
-                        settings.cc_map().iter().find(|(ch, cc, _)| *ch == channel.as_int() && *cc as u8 == controller.as_int())
-                            .or(settings.cc_map().iter().find(|(ch, cc, _)| *ch == 0 && *cc as u8 == controller.as_int()))
-                            .or(settings.cc_map().iter().find(|(ch, cc, _)| *ch == channel.as_int() && *cc == -1))
-                            .or(settings.cc_map().last());
+                    let map = settings
+                        .cc_map()
+                        .iter()
+                        .find(|(ch, cc, _)| {
+                            *ch == channel.as_int() && *cc as u8 == controller.as_int()
+                        })
+                        .or(settings
+                            .cc_map()
+                            .iter()
+                            .find(|(ch, cc, _)| *ch == 0 && *cc as u8 == controller.as_int()))
+                        .or(settings
+                            .cc_map()
+                            .iter()
+                            .find(|(ch, cc, _)| *ch == channel.as_int() && *cc == -1))
+                        .or(settings.cc_map().last());
                     if let Some((_, _, map)) = map {
                         match map {
                             CcMapping::PassThroughToChannel(new_channel) => {
@@ -73,7 +89,7 @@ pub fn apply_filter_map(data: &mut [u8], send: &mut bool, settings: &impl Common
                                 data[1] = *new_cc;
                             }
                             CcMapping::PassThrough => {}
-                            CcMapping::Ignore => { *send = false }
+                            CcMapping::Ignore => *send = false,
                         }
                     } else {
                         println!("Error: no mapping found for cc item, but default should always exist as last item")

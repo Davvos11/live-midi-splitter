@@ -2,13 +2,15 @@ use std::hash::{Hash, Hasher};
 
 use serde::{Deserialize, Serialize};
 
-use crate::backend::common_settings::{CcMap, ChannelMap, CommonSettings, default_cc_map, default_channel_map, default_filter, Transpose, VelocityCurve, VelocityRange};
+use crate::backend::common_settings::{
+    default_cc_map, default_channel_map, default_filter, CcMap, ChannelMap, CommonSettings,
+    Transpose, VelocityCurve, VelocityRange,
+};
 
 // Serde does not accept default = true, so we make it more stupid to make it work
 fn get_true() -> bool {
     true
 }
-
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct OutputSettings {
@@ -122,4 +124,3 @@ impl PartialEq<Self> for OutputSettings {
         self.port_name == other.port_name
     }
 }
-

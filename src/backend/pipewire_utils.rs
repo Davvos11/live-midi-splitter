@@ -114,7 +114,11 @@ pub struct PipeWireData {
 
 impl PipeWireData {
     pub fn new(buffer_size: u32, force_buffer_size: u32, sample_rate: u32) -> Self {
-        let force_buffer_size = if force_buffer_size == 0 {None} else {Some(force_buffer_size)};
+        let force_buffer_size = if force_buffer_size == 0 {
+            None
+        } else {
+            Some(force_buffer_size)
+        };
         let buffer_size = force_buffer_size.unwrap_or(buffer_size);
         Self {
             buffer_size,
@@ -148,14 +152,18 @@ impl Pipewire {
         }
         Ok(false)
     }
-    
+
     pub fn get_new_data() -> Result<PipeWireData, PipewireError> {
         let buffer_size = Self::_get_buffer_size()?;
         let force_buffer_size = Self::_get_force_buffer_size()?;
         let sample_rate = Self::_get_sample_rate()?;
-        Ok(PipeWireData::new(buffer_size, force_buffer_size, sample_rate))
+        Ok(PipeWireData::new(
+            buffer_size,
+            force_buffer_size,
+            sample_rate,
+        ))
     }
-    
+
     pub fn update(&mut self) -> Result<bool, PipewireError> {
         let update = self.should_update()?;
         if update {
@@ -164,7 +172,7 @@ impl Pipewire {
         }
         Ok(update)
     }
-    
+
     pub fn update_manual(&mut self, data: PipeWireData) -> Result<(), PipewireError> {
         self.data = data;
         self.last_update = Instant::now();
@@ -182,7 +190,7 @@ impl Pipewire {
     fn _get_buffer_size() -> Result<u32, PipewireError> {
         get("clock.quantum")
     }
-    
+
     fn _get_force_buffer_size() -> Result<u32, PipewireError> {
         get("clock.force-quantum")
     }

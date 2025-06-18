@@ -2,10 +2,9 @@ use crate::backend::pipewire_utils::{pipewire_installed, Pipewire};
 use crate::backend::properties::MidiLearn;
 use crate::backend::MidiPort;
 use crate::gui::widgets::input_settings::InputTab;
+use crate::gui::widgets::mapping_settings::OutputTab;
 use std::collections::HashMap;
 use std::path::PathBuf;
-use std::sync::{Arc, Mutex};
-use crate::gui::widgets::mapping_settings::OutputTab;
 
 #[derive(Default, Clone, Debug)]
 pub struct State {
@@ -32,7 +31,7 @@ impl State {
                 }
             }
         }
-        
+
         Self {
             pipewire_status,
             pipewire_error,
@@ -48,12 +47,10 @@ impl State {
     pub fn file_path(&self) -> &Option<PathBuf> {
         &self.file_path
     }
-
 }
 
 #[derive(Default)]
 pub struct TabState {
     pub mapping_tabs: HashMap<String, OutputTab>,
-    pub input_tabs: HashMap<usize, InputTab>
+    pub input_tabs: HashMap<usize, InputTab>,
 }
-

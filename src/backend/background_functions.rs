@@ -1,3 +1,4 @@
+use crate::backend::pipewire_utils::{Pipewire, PipewireError};
 use crate::backend::properties::Properties;
 use crate::gui::state::State;
 use crate::utils::{repaint_gui, serialise_properties};
@@ -5,7 +6,6 @@ use egui::Context;
 use std::sync::{Arc, Mutex};
 use std::thread::sleep;
 use std::time::Duration;
-use crate::backend::pipewire_utils::{Pipewire, PipewireError};
 
 pub fn run_background_functions(
     state: Arc<Mutex<State>>,
@@ -63,13 +63,13 @@ pub fn update_pipewire(state: &Arc<Mutex<State>>) -> Result<bool, PipewireError>
     } else {
         false
     };
-    
+
     if update {
         let data = Pipewire::get_new_data()?;
         if let Some(pipewire) = &mut state.lock().unwrap().pipewire_status {
             pipewire.update_manual(data)?;
         }
     }
-    
+
     Ok(update)
 }

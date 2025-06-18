@@ -5,9 +5,10 @@ pub fn transpose(ui: &mut Ui, transpose: &mut i8) {
         .spacing([2.0, 0.0])
         .show(ui, |ui| {
             ui.label("Transpose:");
-            ui.add(egui::DragValue::new(transpose)
-                .clamp_range(-12..=12)
-                   .speed(0.1),
+            ui.add(
+                egui::DragValue::new(transpose)
+                    .clamp_range(-12..=12)
+                    .speed(0.1),
             );
             egui::Grid::new("transpose-buttons")
                 .spacing([0.0, -10.0])

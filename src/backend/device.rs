@@ -10,27 +10,36 @@ pub struct Input {
 
 impl Input {
     pub fn new<F>(port_name: MidiPort, callback: F) -> Result<Self, ConnectError>
-        where F: FnMut(u64, &[u8], &mut usize) + Send + 'static
+    where
+        F: FnMut(u64, &[u8], &mut usize) + Send + 'static,
     {
         let input = new_input();
         let connection = Self::connect(input, &port_name.internal, callback)?;
 
-        Ok(Self { port_name, connection })
+        Ok(Self {
+            port_name,
+            connection,
+        })
     }
 
-    fn connect<F>(input: MidiInput, port_name: &String, callback: F) -> Result<MidiInputConnection<usize>, ConnectError>
-        where F: FnMut(u64, &[u8], &mut usize) + Send + 'static
+    fn connect<F>(
+        input: MidiInput,
+        port_name: &String,
+        callback: F,
+    ) -> Result<MidiInputConnection<usize>, ConnectError>
+    where
+        F: FnMut(u64, &[u8], &mut usize) + Send + 'static,
     {
         // Find port by name
-        if let Some(port) = input.ports().iter()
-            .find(|p| input.port_name(p).unwrap_or_default() == *port_name) {
+        if let Some(port) = input
+            .ports()
+            .iter()
+            .find(|p| input.port_name(p).unwrap_or_default() == *port_name)
+        {
             // Create connection
-            input.connect(
-                port,
-                "input",
-                callback,
-                0,
-            ).or(Err(ConnectError {}))
+            input
+                .connect(port, "input", callback, 0)
+                .or(Err(ConnectError {}))
         } else {
             Err(ConnectError {})
         }
@@ -55,15 +64,18 @@ impl Output {
         Ok(Self { connection })
     }
 
-    fn connect(output: MidiOutput, port_name: &String) -> Result<MidiOutputConnection, ConnectError> {
+    fn connect(
+        output: MidiOutput,
+        port_name: &String,
+    ) -> Result<MidiOutputConnection, ConnectError> {
         // Find port by name
         let ports = output.ports();
-        let port = ports.iter()
+        let port = ports
+            .iter()
             .find(|p| output.port_name(p).unwrap_or_default() == *port_name);
         if let Some(port) = port {
             // Create connection
-            output.connect(port, "output")
-                .map_err(|_| ConnectError {})
+            output.connect(port, "output").map_err(|_| ConnectError {})
         } else {
             Err(ConnectError {})
         }

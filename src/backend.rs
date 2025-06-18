@@ -15,15 +15,15 @@ use midly::num::{u4, u7};
 use once_cell::sync::Lazy;
 use regex::Regex;
 
-pub mod preset;
-pub mod properties;
+pub mod background_functions;
+pub mod common_settings;
+mod device;
 pub mod input_settings;
 pub mod midi_handler;
-mod device;
 pub mod output_settings;
-pub mod common_settings;
 pub mod pipewire_utils;
-pub mod background_functions;
+pub mod preset;
+pub mod properties;
 
 pub struct Backend {
     properties: Arc<Mutex<Properties>>,
@@ -56,10 +56,11 @@ impl Backend {
         // TODO error to frontend (new_input uses unwrap)
         let midi_in = new_input();
         let midi_out = new_output();
-        
+
         let (event_sender, event_receiver) = mpsc::channel::<(u64, QueueItems)>();
 
-        let mut queue_handler = QueueHandler::new(Arc::clone(&self.output_handlers), Arc::clone(&self.queue));
+        let mut queue_handler =
+            QueueHandler::new(Arc::clone(&self.output_handlers), Arc::clone(&self.queue));
         let _ = thread::spawn(move || queue_handler.run(event_receiver));
 
         loop {
@@ -84,21 +85,28 @@ impl Backend {
                         held_pedals: Arc::clone(&self.held_pedals),
                         queue: Arc::clone(&self.queue),
                         event_sender: event_sender.clone(),
-                    }.create()
+                    }
+                    .create()
                 };
-                
+
                 // Update input listeners
-                properties.inputs.iter()
+                properties
+                    .inputs
+                    .iter()
                     .filter(|s| !s.port_name.is_empty())
                     .enumerate()
                     .for_each(|(i, new_input)| {
-                        let port = state.available_inputs.iter()
+                        let port = state
+                            .available_inputs
+                            .iter()
                             .find(|p| p.readable == new_input.port_name);
-                        
+
                         if let Some(input) = self.input_listeners.get_mut(i) {
                             if input.port_name.readable != new_input.port_name {
                                 // Input setting has changed, change connection
-                                if let Some(Ok(new_input)) = port.map(|p| new_listener(p.clone(), i)) {
+                                if let Some(Ok(new_input)) =
+                                    port.map(|p| new_listener(p.clone(), i))
+                                {
                                     *input = new_input;
                                 }
                             }
@@ -121,11 +129,9 @@ impl Backend {
         }
     }
 
-
     pub fn properties(&self) -> Arc<Mutex<Properties>> {
         Arc::clone(&self.properties)
     }
-
 
     pub fn gui_ctx(&self) -> Arc<Mutex<Option<Context>>> {
         Arc::clone(&self.gui_ctx)
@@ -134,18 +140,22 @@ impl Backend {
     pub fn state(&self) -> Arc<Mutex<State>> {
         Arc::clone(&self.state)
     }
-    
 }
 
 fn get_ports<T: MidiIO>(midi_io: &T) -> Vec<MidiPort> {
-    midi_io.ports().iter()
-        .map(|p| midi_io.port_name(p).unwrap_or("Cannot get port name".to_string()))
+    midi_io
+        .ports()
+        .iter()
+        .map(|p| {
+            midi_io
+                .port_name(p)
+                .unwrap_or("Cannot get port name".to_string())
+        })
         .map(parse_port)
         .collect()
 }
 
-#[derive(Clone, Debug)]
-#[derive(PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct MidiPort {
     pub readable: String,
     pub internal: String,
@@ -155,9 +165,12 @@ impl MidiPort {
     fn new(readable: String, internal: String) -> Self {
         Self { readable, internal }
     }
-    
+
     fn new_simple(internal: String) -> Self {
-        Self {readable: internal.clone(), internal}
+        Self {
+            readable: internal.clone(),
+            internal,
+        }
     }
 }
 

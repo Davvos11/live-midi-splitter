@@ -4,9 +4,9 @@ use crate::gui::state::State;
 use crate::gui::tabs::Tab;
 use crate::utils::load;
 use egui::{RichText, TextStyle, Ui};
+use itertools::Itertools;
 use std::sync::{Arc, Mutex};
 use std::{path, thread};
-use itertools::Itertools;
 
 pub fn recent_files(
     ui: &mut Ui,

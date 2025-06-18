@@ -22,7 +22,7 @@ pub fn save_load(
         if keybind_button(ui, "Open", &keybinds.load, true).clicked() {
             gui_load(properties, loading, recent_files, current_tab, state)
         }
-        
+
         let changed = properties.lock().unwrap().changed;
 
         if let Some(filename) = state.lock().unwrap().file_path().clone() {

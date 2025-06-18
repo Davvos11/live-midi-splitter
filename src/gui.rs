@@ -23,11 +23,11 @@ use egui::{Context, ViewportCommand};
 use egui_dnd::dnd;
 use egui_keybind::Bind;
 
+pub mod data;
+mod keybinds;
+pub mod state;
 pub mod tabs;
 mod widgets;
-pub mod data;
-pub mod state;
-mod keybinds;
 
 pub struct Gui {
     properties: Arc<Mutex<Properties>>,
@@ -81,7 +81,11 @@ impl Gui {
     pub fn with_preset(path: &String) -> Self {
         let gui = Gui::default();
         let path = PathBuf::from(path);
-        load(&path, Arc::clone(&gui.properties), Arc::clone(&gui.current_tab));
+        load(
+            &path,
+            Arc::clone(&gui.properties),
+            Arc::clone(&gui.current_tab),
+        );
         gui.state.lock().unwrap().set_file_path(path.clone());
         gui.recent_files.lock().unwrap().add(path);
 
@@ -103,32 +107,53 @@ impl eframe::App for Gui {
         let mut duplicate_preset = None;
 
         let file_path = self.state.lock().unwrap().file_path().clone();
-        
-        let filename = file_path.clone().map(|x| 
-            x.file_name().unwrap_or_default().to_string_lossy().to_string()
-        );
-        
+
+        let filename = file_path.clone().map(|x| {
+            x.file_name()
+                .unwrap_or_default()
+                .to_string_lossy()
+                .to_string()
+        });
+
         // Handle keybinds
         if ctx.input_mut(|i| self.keybinds.load.pressed(i)) {
-            gui_load(&self.properties, &self.loading, &self.recent_files, &self.current_tab, &self.state);
+            gui_load(
+                &self.properties,
+                &self.loading,
+                &self.recent_files,
+                &self.current_tab,
+                &self.state,
+            );
         }
         if ctx.input_mut(|i| self.keybinds.save_as.pressed(i)) {
-            gui_save_as(&self.properties, &self.loading, &self.recent_files, &self.state);
+            gui_save_as(
+                &self.properties,
+                &self.loading,
+                &self.recent_files,
+                &self.state,
+            );
         }
         if ctx.input_mut(|i| self.keybinds.save.pressed(i)) {
             if let Some(filename) = &file_path {
                 gui_save(filename.clone(), &self.properties, &self.loading);
             } else {
-                gui_save_as(&self.properties, &self.loading, &self.recent_files, &self.state);
+                gui_save_as(
+                    &self.properties,
+                    &self.loading,
+                    &self.recent_files,
+                    &self.state,
+                );
             }
         }
-        
+
         {
             // Update title bar (if title changed)
             let mut state = self.state.lock().unwrap();
             if state.path_changed {
                 if let Some(filename) = &filename {
-                    ctx.send_viewport_cmd(ViewportCommand::Title(format!("Live MIDI splitter - {filename}")))
+                    ctx.send_viewport_cmd(ViewportCommand::Title(format!(
+                        "Live MIDI splitter - {filename}"
+                    )))
                 }
                 state.path_changed = false;
             }
@@ -136,17 +161,25 @@ impl eframe::App for Gui {
 
         // Draw UI
         egui::TopBottomPanel::new(TopBottomSide::Top, "header").show(ctx, |ui| {
-            egui::Grid::new("header-grid")
-                .show(ui, |ui| {
-                    ui.heading("Live MIDI splitter");
-                    if let Some(file_name) = filename {
-                        ui.label(shorten_str(&file_name, 20)).on_hover_text(file_name);
-                    }
-                    save_load(ui, &self.properties, &self.loading, &self.recent_files, &self.current_tab, &self.state, &self.keybinds);
-                    let mut properties = self.properties.lock().unwrap();
-                    transpose(ui, &mut properties.transpose);
-                    ui.end_row();
-                });
+            egui::Grid::new("header-grid").show(ui, |ui| {
+                ui.heading("Live MIDI splitter");
+                if let Some(file_name) = filename {
+                    ui.label(shorten_str(&file_name, 20))
+                        .on_hover_text(file_name);
+                }
+                save_load(
+                    ui,
+                    &self.properties,
+                    &self.loading,
+                    &self.recent_files,
+                    &self.current_tab,
+                    &self.state,
+                    &self.keybinds,
+                );
+                let mut properties = self.properties.lock().unwrap();
+                transpose(ui, &mut properties.transpose);
+                ui.end_row();
+            });
         });
 
         egui::SidePanel::new(Side::Left, "sidebar")
@@ -164,35 +197,40 @@ impl eframe::App for Gui {
                     let mut properties = self.properties.lock().unwrap();
                     let current_preset = properties.current_preset;
                     let presets = &mut properties.presets;
-                    let drag_response = dnd(ui, "presets").show(presets.iter(), |ui, preset, handle, _| {
-                        handle.ui(ui, |ui| {
-                            let tab = Tab::Preset(preset.id);
-                            let button = ui.selectable_label(
-                                *current_tab == tab || current_preset == preset.id,
-                                preset.name.clone(),
-                            );
-                            if button.clicked() {
-                                *current_tab = tab;
-                                // Besides changing the current tab, also change the preset
-                                change_preset_to = Some(preset.id);
-                            }
-                            button.context_menu(|ui| {
-                                if ui.button("Duplicate").clicked() {
-                                    duplicate_preset = Some(preset.id);
-                                    ui.close_menu();
+                    let drag_response =
+                        dnd(ui, "presets").show(presets.iter(), |ui, preset, handle, _| {
+                            handle.ui(ui, |ui| {
+                                let tab = Tab::Preset(preset.id);
+                                let button = ui.selectable_label(
+                                    *current_tab == tab || current_preset == preset.id,
+                                    preset.name.clone(),
+                                );
+                                if button.clicked() {
+                                    *current_tab = tab;
+                                    // Besides changing the current tab, also change the preset
+                                    change_preset_to = Some(preset.id);
                                 }
-                                if ui.button("Delete").clicked() {
-                                    delete_preset = Some(preset.id);
-                                    ui.close_menu();
-                                }
+                                button.context_menu(|ui| {
+                                    if ui.button("Duplicate").clicked() {
+                                        duplicate_preset = Some(preset.id);
+                                        ui.close_menu();
+                                    }
+                                    if ui.button("Delete").clicked() {
+                                        delete_preset = Some(preset.id);
+                                        ui.close_menu();
+                                    }
+                                });
                             });
                         });
-                    });
 
                     if let Some(update) = drag_response.final_update() {
                         // Update the current preset accordingly
                         if current_preset == update.from {
-                            let new_index = if update.to > update.from { update.to - 1 } else { update.to };
+                            let new_index = if update.to > update.from {
+                                update.to - 1
+                            } else {
+                                update.to
+                            };
                             change_preset_to = Some(new_index)
                         } else if current_preset > update.from && current_preset < update.to {
                             change_preset_to = Some(current_preset - 1)
@@ -227,13 +265,25 @@ impl eframe::App for Gui {
                 let mut current_tab = self.current_tab.lock().unwrap();
                 match *current_tab {
                     Tab::RecentFiles => {
-                        recent_files(ui, &self.properties, &self.loading, Arc::clone(&self.recent_files), Arc::clone(&self.current_tab), &self.state);
+                        recent_files(
+                            ui,
+                            &self.properties,
+                            &self.loading,
+                            Arc::clone(&self.recent_files),
+                            Arc::clone(&self.current_tab),
+                            &self.state,
+                        );
                     }
                     Tab::QuickStart => {
                         quick_start(ui, ctx, &self.properties, &self.loading, &self.state);
                     }
                     Tab::InputSettings => {
-                        input_settings(ui, Arc::clone(&self.properties), Arc::clone(&self.state), &mut self.tab_state);
+                        input_settings(
+                            ui,
+                            Arc::clone(&self.properties),
+                            Arc::clone(&self.state),
+                            &mut self.tab_state,
+                        );
                     }
                     Tab::Preset(id) => {
                         // Handle preset change by backend
@@ -250,7 +300,13 @@ impl eframe::App for Gui {
                             }
                         }
 
-                        preset_tab(ui, Arc::clone(&self.properties), Arc::clone(&self.state), id, &mut self.tab_state)
+                        preset_tab(
+                            ui,
+                            Arc::clone(&self.properties),
+                            Arc::clone(&self.state),
+                            id,
+                            &mut self.tab_state,
+                        )
                     }
                 }
             });

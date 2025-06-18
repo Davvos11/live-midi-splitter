@@ -16,7 +16,11 @@ pub fn quick_start(
     ui.heading("Quick start:");
     ui.separator();
 
-    let mut error = state.lock().unwrap().pipewire_error.clone()
+    let mut error = state
+        .lock()
+        .unwrap()
+        .pipewire_error
+        .clone()
         .map(|e| format!("Error getting buffer size:\n{e}"));
     if let Some(pipewire) = &mut state.lock().unwrap().pipewire_status {
         let values = pipewire.get_values();
@@ -26,18 +30,30 @@ pub fn quick_start(
             values.buffer_size, values.sample_rate, values.delay
         ));
 
-        let text = values.force_buffer_size.map(|s| s.to_string()).unwrap_or_default();
+        let text = values
+            .force_buffer_size
+            .map(|s| s.to_string())
+            .unwrap_or_default();
         ui.horizontal(|ui| {
             ui.label("Force buffer size:");
             ComboBox::from_id_source("buffer_size")
                 .selected_text(text)
                 .show_ui(ui, |ui| {
-                    if ui.selectable_label(values.force_buffer_size.is_none(), "None").clicked() {
+                    if ui
+                        .selectable_label(values.force_buffer_size.is_none(), "None")
+                        .clicked()
+                    {
                         pipewire.set_buffer_size(0);
                     };
                     for i in 2..=11 {
                         let value = 2u32.pow(i);
-                        if ui.selectable_label(values.force_buffer_size.unwrap_or_default() == value, value.to_string()).clicked() {
+                        if ui
+                            .selectable_label(
+                                values.force_buffer_size.unwrap_or_default() == value,
+                                value.to_string(),
+                            )
+                            .clicked()
+                        {
                             pipewire.set_buffer_size(value)
                         }
                     }
@@ -54,7 +70,7 @@ pub fn quick_start(
     }
 
     ui.separator();
-    
+
     ui.heading("Shortcuts:");
 
     let mut show_dialog = None;

@@ -1,8 +1,8 @@
+use serde::{Deserialize, Serialize};
 use std::fs;
 use std::fs::File;
 use std::io::BufReader;
 use std::path::PathBuf;
-use serde::{Deserialize, Serialize};
 
 const NAME: Option<&str> = option_env!("CARGO_PKG_NAME");
 

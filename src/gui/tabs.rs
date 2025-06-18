@@ -1,14 +1,14 @@
 pub mod input_settings;
 pub mod preset;
-pub mod recent_files;
 pub mod quick_start;
+pub mod recent_files;
 
 #[derive(PartialEq)]
 pub enum Tab {
     RecentFiles,
     InputSettings,
     QuickStart,
-    Preset(usize)
+    Preset(usize),
 }
 
 impl Default for Tab {
