@@ -6,7 +6,7 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-midir = { version = "0.9.1", features = ["jack"] }
+midir = { version = "0.10.1", features = ["jack"] }
 serde = { version = "1", features = ["derive"] }
 egui = "0.27"
 egui_extras = "0.27"
@@ -18,9 +18,9 @@ eframe = { version = "0.27", default-features = false, features = [
     "persistence",   # Enable restoring app state when restarting the app.
 ] }
 midly = "0.5.3"
-rfd = "0.12.1"
+rfd = "0.15.3"
 serde_json = "1.0.111"
-dirs = "5.0.1"
+dirs = "6.0.0"
 egui_dnd = "0.8.0"
 pro-serde-versioned = "1.0.2"
 regex = "1.10.4"
