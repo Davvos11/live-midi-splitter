@@ -17,7 +17,7 @@ https://github.com/Davvos11/live-midi-splitter/assets/20478740/6d5f8208-849c-4c1
 - [X] Filter MIDI ranges, i.e. keyboard split
 - [X] Send note-off and pedal off events to previous preset after switching to another
 - [X] Save and load state of the program
-  - [ ] Auto save
+  - [X] Auto save
 - [x] Filter and map MIDI CC
 - [x] Filter and map MIDI channels
 - [x] Velocity curves
