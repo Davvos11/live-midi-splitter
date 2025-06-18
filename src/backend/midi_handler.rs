@@ -40,7 +40,7 @@ impl Listener {
                 let event = event.unwrap();
 
                 let mut properties = self.properties.lock().unwrap();
-                
+
                 if let Some(input_settings) = properties.inputs.get(self.input_id) {
                     // Handle program change, if enabled
                     if input_settings.use_program_change {
